@@ -7,656 +7,300 @@ local function test(name, fn)
     if not ok then error("FAIL " .. name .. ": " .. tostring(err), 0) end
     passed = passed + 1; print("PASS " .. name)
 end
-local function loadFile(file, addon)
-    assert((loadstring or load)(assert(TEST_FILES[file]), "@" .. file))("WhoDueling", addon)
-end
-local function newFrame(parent)
-    local f = { scripts = {}, hooks = {}, attributes = {}, shown = false, parent = parent, height = 1 }
+
+local function frame(parent)
+    local f = { parent = parent, scripts = {}, hooks = {}, attributes = {}, events = {},
+        shown = false, width = 1, height = 1, left = 400, top = 400, scale = 1 }
     function f:SetScript(event, fn) self.scripts[event] = fn end
     function f:HookScript(event, fn) self.hooks[event] = fn end
-    function f:RegisterEvent(event) self.events = self.events or {}; self.events[event] = true end
-    function f:SetAttribute(key, value) assert(not COMBAT, "attribute changed in combat"); self.attributes[key] = value end
-    function f:SetPoint(...) self.point = { ... } end
-    function f:ClearAllPoints() self.point = nil end
+    function f:RegisterEvent(event) self.events[event] = true end
+    function f:SetAttribute(key, value) assert(not COMBAT, "protected attributes changed in combat"); self.attributes[key] = value end
+    function f:SetPoint(...) assert(not COMBAT, "protected position changed in combat"); self.point = { ... } end
+    function f:ClearAllPoints() assert(not COMBAT, "protected position changed in combat"); self.point = nil end
     function f:SetSize(w, h) self.width, self.height = w, h end
-    function f:SetHeight(h) self.height = h end
+    function f:GetWidth() return self.width end
     function f:GetHeight() return self.height end
-    function f:SetWidth(w) self.width = w end
-    function f:SetFrameStrata(_) end
-    function f:SetFrameLevel(level) self.frameLevel = level end
-    function f:GetFrameLevel() return self.frameLevel or 1 end
-    function f:SetBackdrop(_) end
-    function f:EnableMouse(_) end
+    function f:GetLeft() return self.left end
+    function f:GetTop() return self.top end
+    function f:GetEffectiveScale() return self.scale end
+    function f:SetFrameStrata(value) self.strata = value end
+    function f:SetFrameLevel(value) self.level = value end
+    function f:SetText(value) self.text = value end
     function f:RegisterForClicks(...) self.clicks = { ... } end
-    function f:SetJustifyH(_) end
-    function f:SetWordWrap(_) end
-    function f:SetText(t) self.text = t end
-    function f:GetStringHeight() return math.max(14, math.ceil(#(self.text or "") / 42) * 14) end
-    function f:GetLeft() return self.left or 400 end
-    function f:GetTop() return self.top or 400 end
-    function f:CreateFontString(...) return newFrame(self) end
     function f:Show() self.shown = true end
-    function f:Hide()
-        self.shown = false
-        if self.hooks.OnHide then self.hooks.OnHide(self) end
-    end
+    function f:Hide() self.shown = false; if self.hooks.OnHide then self.hooks.OnHide(self) end end
     function f:IsShown() return self.shown end
     return f
 end
 
-local function environment(locale, database)
+local function environment(locale, initialCombat)
     COMBAT = false
-    local env = { time = 100, sent = {}, inspections = {}, comparisons = {}, units = {}, calls = {}, chats = {}, hooks = {},
-        entries = { { id = 527, name = "Largest hit received", quantity = "12345" },
-            { id = 528, name = "Total damage received", quantity = "67890" },
-            { id = 9001, key = "wins" }, { id = 9002, key = "losses" } } }
-    local me, other = "Player-1-000001", "Player-1-000002"
-    env.me, env.other = me, other
-    env.units.player = { name = "Moi", surname = "Famille", guid = me }
-    env.units.target = { name = "Rival", surname = "Famille", guid = other }
+    local e = { time = 100, units = {}, created = {}, forbiddenCalls = 0, targetCalls = 0 }
+    e.me, e.other = "Player-1-000001", "Player-1-000002"
+    e.units.player = { name = "Moi", surname = "Famille", guid = e.me }
+    e.units.target = { name = "Autre", surname = "Famille", guid = "Player-1-000003" }
     GetLocale = function() return locale or "frFR" end
-    GetTime = function() return env.time end
-    GetServerTime = function() return 1800000000 end
+    GetTime = function() return e.time end
     GetNormalizedRealmName, GetRealmName = nil, nil
-    GetBuildInfo = function() return "1.60.1", "70338", "date", 16001 end
-    UnitFullName = function(unit) local u = env.units[unit]; if u then return u.name, u.surname end end
-    UnitName = UnitFullName
-    UnitNameUnmodified = UnitName
-    UnitNameFromGUID = function(guid)
-        for _, unit in pairs(env.units) do if unit.guid == guid then return unit.name, unit.surname end end
-    end
-    UnitGUID = function(unit) return env.units[unit] and env.units[unit].guid end
-    UnitIsPlayer = function(unit) return env.units[unit] ~= nil end
+    UnitName = function(unit) local u = e.units[unit]; if u then return u.name, u.surname end end
+    UnitNameUnmodified, UnitFullName = UnitName, UnitName
+    UnitGUID = function(unit) return e.units[unit] and e.units[unit].guid end
+    UnitIsPlayer = function(unit) return e.units[unit] and e.units[unit].player ~= false or false end
     InCombatLockdown = function() return COMBAT end
     issecretvalue = function(value) return type(value) == "table" and value.secret == true end
-    CanInspect = function(unit) return env.inspectable ~= false and env.units[unit] ~= nil end
-    NotifyInspect = function(unit) env.inspections[#env.inspections + 1] = unit end
-    SetAchievementComparisonUnit = function(unit) env.comparisons[#env.comparisons + 1] = unit end
-    GetDuelerInfo = function() return env.dueler end
-    GetPlayerInfoByGUID = function(guid)
-        for _, unit in pairs(env.units) do
-            if unit.guid == guid then return "Mage", "MAGE", "Human", "Human", 2, unit.name, unit.surname end
-        end
-    end
-    GetStatisticsCategoryList = function() return env.noCounters and {} or env.categories or { 1 } end
-    GetCategoryNumAchievements = function(_) return #env.entries end
-    GetStatistic = function(id, index)
-        if index then local row = env.entries[index]; return row.quantity or "0", row.skip or false, row.id end
-        env.calls[#env.calls + 1] = id
-        for _, row in ipairs(env.entries) do
-            if row.id == id then return row.key and env.native and env.native[row.key] or row.quantity end
-        end
-    end
-    GetComparisonStatistic = function(id)
-        for _, row in ipairs(env.entries) do
-            if row.id == id then return row.key and env.compared and env.compared[row.key] or row.quantity end
-        end
-    end
-    GetAchievementInfo = function(id)
-        for _, row in ipairs(env.entries) do
-            if row.id == id then return id, row.name or env.addon.L[row.key == "wins" and "statWins" or "statLosses"] end
-        end
-    end
-    C_NamePlate = { GetNamePlates = function() return env.plates or {} end }
-    Constants = { TraitConsts = { INSPECT_TRAIT_CONFIG_ID = -1 }, CharacterNameSeparatorConsts = { CHARACTERNAME_SURNAME_SEPARATOR = " ", CHARACTERNAME_REALMNAME_SEPARATOR = "-" } }
-    C_Traits = {
-        HasValidInspectData = function() return not env.invalidTalents end,
-        GetConfigInfo = function(id) if env.invalidTalents or env.noInspectConfig and id == -1 then return nil end; return { treeIDs = { 42 } } end,
-        GetGroupDisplayInfoByTreeID = function(id)
-            return { { groupID = 30, orderIndex = 3, displayName = "Givre" },
-                { groupID = 10, orderIndex = 1, displayName = "Arcane" },
-                { groupID = 20, orderIndex = 2, displayName = "Feu" } }
-        end,
-        GetGroupCurrencyInfo = function(id, ids)
-            if env.invalidTalents then return nil end
-            return { { traitNodeGroupID = 20, currencyInfos = { { spent = 21 } } },
-                { traitNodeGroupID = 30, currencyInfos = { { spent = 30 } } },
-                { traitNodeGroupID = 10, currencyInfos = { { spent = 0 } } } }
-        end,
-    }
-    C_SpecializationInfo = { GetInspectSpecialization = function(unit) return env.units[unit] and 8 end }
-    C_ClassTalents = { GetActiveConfigID = function() return 7 end,
-        GetTraitTreeForSpec = function(spec) eq(spec, 8); return 42 end }
-    Enum = { RegisterAddonMessagePrefixResult = { Success = 0 }, SendAddonMessageResult = { Success = 0 } }
-    C_ChatInfo = {
-        RegisterAddonMessagePrefix = function(prefix) eq(prefix, "WHODUELING"); return 0 end,
-        SendAddonMessage = function(prefix, message, channel, name)
-            env.sent[#env.sent + 1] = { prefix = prefix, message = message, channel = channel, name = name }
-            return env.sendError and 1 or 0
-        end,
-    }
-    UIParent = newFrame()
-    GameTooltip = newFrame()
-    function GameTooltip:SetOwner(owner, _) self.owner = owner end
-    function GameTooltip:GetOwner() return self.owner end
-    function GameTooltip:AddLine(...) end
-    DEFAULT_CHAT_FRAME = { AddMessage = function(_, message) env.chats[#env.chats + 1] = message end }
-    CreateFrame = function(_, _, parent, template) local f = newFrame(parent); f.template = template; return f end
-    RegisterStateDriver = function(f, name, condition) assert(not COMBAT, "driver changed in combat"); f.driver = condition end
-    env.popup = newFrame()
-    env.popup.which = "DUEL_REQUESTED"
-    env.popup:Show()
-    StaticPopup_FindVisible = function(which) if env.popup:IsShown() and env.popup.which == which then return env.popup end end
-    StartDuel = function(...) if env.hooks.StartDuel then env.hooks.StartDuel(...) end end
-    hooksecurefunc = function(name, fn) env.hooks[name] = fn end
-    InspectFrame, PlayerSpellsFrame, AchievementFrameComparison = nil, nil, nil
-    DUEL_WINNER_KNOCKOUT = "%s a vaincu %s en duel."
-    DUEL_WINNER_RETREAT = "%s a fui face à %s en duel."
-    WhoDuelingDB = database
+    Constants = { CharacterNameSeparatorConsts = { CHARACTERNAME_SURNAME_SEPARATOR = " " } }
+    C_NamePlate = { GetNamePlates = function() return e.plates or {} end }
+    local function forbidden() e.forbiddenCalls = e.forbiddenCalls + 1; error("removed feature was called") end
+    NotifyInspect, CanInspect, SetAchievementComparisonUnit = forbidden, forbidden, forbidden
+    GetStatisticsCategoryList, GetCategoryNumAchievements, GetStatistic = forbidden, forbidden, forbidden
+    StartDuel, AcceptDuel, CancelDuel = forbidden, forbidden, forbidden
+    C_ChatInfo = { RegisterAddonMessagePrefix = forbidden, SendAddonMessage = forbidden }
+    WhoDuelingDB = { marker = "old data" }
     SlashCmdList = {}
+    UIParent = frame()
+    e.popup = frame(); e.popup:SetSize(320, 100); e.popup.which = "DUEL_REQUESTED"; e.popup:Show()
+    StaticPopup_FindVisible = function(which) if e.popup:IsShown() and e.popup.which == which then return e.popup end end
+    CreateFrame = function(_, name, parent, template)
+        local f = frame(parent); f.name, f.template = name, template
+        e.created[#e.created + 1] = f
+        return f
+    end
+    RegisterStateDriver = function(f, _, condition)
+        assert(not COMBAT, "protected visibility changed in combat")
+        f.driver = condition; f.shown = condition == "[combat] hide; show" and not COMBAT
+    end
+    COMBAT = initialCombat or false
     local addon = {}
-    for _, file in ipairs({ "Localization.lua", "Logic.lua", "Data.lua", "UI.lua", "Core.lua" }) do loadFile(file, addon) end
-    env.addon = addon
-    function env.event(event, ...) addon.frame.scripts.OnEvent(addon.frame, event, ...) end
-    function env.advance(seconds) env.time = env.time + seconds; addon.Tick() end
-    function env.clickTarget()
-        local button = addon.UI.button
-        eq(button.clicks[1], "LeftButtonUp"); eq(button.attributes.useOnKeyDown, false)
-        if COMBAT then return end
-        if button.scripts.PreClick then button.scripts.PreClick(button, "LeftButton", false) end
-        if button.attributes.type == "target" then
-            local target = env.units[button.attributes.unit]
-            if target then env.units.target = target end
-        elseif button.attributes.type == "macro" and not env.disableMacros then
-            local name = button.attributes.macrotext and button.attributes.macrotext:match("^/targetexact (.+)$")
-            for _, unit in pairs(env.units) do
-                if unit.name == name or addon.Data.FullName(unit.name, unit.surname) == name then env.units.target = unit; break end
+    for _, file in ipairs({ "Localization.lua", "Logic.lua", "Data.lua", "UI.lua", "Core.lua" }) do
+        assert((loadstring or load)(TEST_FILES[file], "@" .. file))("WhoDueling", addon)
+    end
+    e.addon = addon
+    function e.event(event, ...) addon.frame.scripts.OnEvent(addon.frame, event, ...) end
+    function e.advance(seconds) e.time = e.time + seconds; addon.Tick() end
+    function e.combat(value)
+        COMBAT = value
+        for _, f in ipairs(e.created) do if f.driver then f.shown = f.driver == "[combat] hide; show" and not value end end
+        e.event(value and "PLAYER_REGEN_DISABLED" or "PLAYER_REGEN_ENABLED")
+    end
+    function e.click()
+        local b = addon.UI.button
+        if not b or not b:IsShown() or COMBAT then return end
+        eq(b.clicks[1], "LeftButtonUp"); eq(b.attributes.useOnKeyDown, false)
+        if b.scripts.PreClick then b.scripts.PreClick(b, "LeftButton", false) end
+        if b.attributes.type == "target" then
+            local unit = e.units[b.attributes.unit]
+            if unit then e.units.target = unit; e.targetCalls = e.targetCalls + 1 end
+        elseif b.attributes.type == "macro" then
+            local name = b.attributes.macrotext:match("^/targetexact (.+)$")
+            for _, unit in pairs(e.units) do
+                if addon.Data.FullName(unit.name, unit.surname) == name then
+                    e.units.target = unit; e.targetCalls = e.targetCalls + 1; break
+                end
             end
         end
-        if button.hooks.PostClick then button.hooks.PostClick(button, "LeftButton", false) end
+        if b.hooks.PostClick then b.hooks.PostClick(b, "LeftButton", false) end
     end
-    env.event("ADDON_LOADED", "WhoDueling")
-    return env
+    e.event("ADDON_LOADED", "WhoDueling")
+    return e
 end
 
-test("all locales are complete and preserve format placeholders", function()
+test("all locales provide the single button label and translated description", function()
     local addon = environment().addon
-    for locale, translation in pairs(addon.Translations) do
-        eq(#translation, #addon.LocaleKeys, locale)
-        for i, english in ipairs(addon.Translations.enUS) do
-            assert(type(translation[i]) == "string" and translation[i] ~= "", locale)
-            local function placeholders(s) return (s:gsub("[^%%]", "")) end
-            eq(placeholders(translation[i]), placeholders(english), locale .. " / " .. addon.LocaleKeys[i])
-            if english:find("%%s") then assert(pcall(string.format, translation[i], "10", "6", "4")) end
-            if english:find("%%d") then assert(pcall(string.format, translation[i], 3)) end
-        end
+    eq(#addon.LocaleKeys, 1)
+    for locale, row in pairs(addon.Translations) do
+        eq(#row, 1); assert(type(row[1]) == "string" and row[1] ~= "")
+        eq(environment(locale).addon.UI.button.text, row[1])
         if locale ~= "enUS" and locale ~= "enGB" then assert(TEST_TOC:find("## Notes-" .. locale .. ":", 1, true)) end
     end
-    eq(environment("enGB").addon.L.target, "Target")
     eq(environment("unknown").addon.L.target, "Target")
+    eq(environment("enGB").addon.L.target, "Target")
 end)
 
-test("counts reject missing, fractional, negative, secret and malformed values", function()
-    local logic = environment().addon.Logic
-    for _, value in ipairs({ "--", "", "1.5", "1,23", "1e2", "NaN", -1, 1.5, { secret = true } }) do eq(logic.Count(value), nil) end
-    eq(logic.Count("0"), 0); eq(logic.Count("1,234,567"), 1234567)
-    eq(logic.Count("1.234"), 1234); eq(logic.Count("1\194\160234"), 1234)
-    eq(logic.Count("1\226\128\175234"), 1234)
-end)
-
-test("first names and surnames reject injection and normalize full names and links", function()
+test("full first-name surname identity preserves accents and rejects incomplete or injected names", function()
     local l = environment().addon.Logic
-    eq(l.Name("Rival\n/duel Moi", "Famille"), nil)
-    eq(l.Name("Rival;/duel", "Famille"), nil)
-    eq(l.Name("Rival", "La Croisade"), nil)
-    eq(l.Name("Rival", "Famille"), "Rival Famille")
-    eq(l.Name("Bia Fine"), "Bia Fine")
-    eq(l.Name("Bia-Fine"), "Bia Fine")
     eq(l.Name("Bia", "Fine"), "Bia Fine")
+    eq(l.Name("Bia-Fine"), "Bia Fine")
     eq(l.Name("Bia Fine", "Fine"), "Bia Fine")
-    eq(l.Name("Bia Fine", "Autre"), nil)
-    eq(l.Name("Bia"), nil)
-    eq(l.Name("Bia", ""), nil)
-    eq(l.Name("Bia Fine", ""), "Bia Fine")
-    eq(l.Name("Bia", { secret = true }), nil)
-    eq(l.Name("Bia", "[Fine]"), nil)
     eq(l.Name("|Hplayer:Bia-Fine:1|h[Bia]|h"), "Bia Fine")
-    eq(l.Name("|Hplayer:Rival|h[Rival]|h", "Famille"), "Rival Famille")
+    eq(l.Name("Élise", "Lumière"), "Élise Lumière")
+    for _, name in ipairs({ "Bia", "Bia Fine Autre", "Bia\nFine", "Bia /duel", "[target=player] Fine" }) do eq(l.Name(name), nil) end
+    eq(l.Name("Bia", { secret = true }), nil)
+    eq(l.Name("Bia", "Fine\n/target Moi"), nil)
+    eq(l.Name("Bia Fine", "Autre"), nil)
 end)
 
-test("Blizzard result templates support every locale and literal pattern symbols", function()
-    local l = environment().addon.Logic
-    local templates = {
-        "%s has defeated %s in a duel.", "%s a vaincu %s en duel.", "%s hat %s in einem Duell besiegt.",
-        "%s ha derrotado a %s en un duelo.", "%s ha sconfitto %s in duello.", "%s derrotou %s em um duelo.",
-        "%s побеждает %s в дуэли.", "%s 님이 %s 님과의 결투에서 승리했습니다.",
-        "%s在决斗中战胜了%s。", "%s在決鬥中擊敗了%s。", "%s (%s) [duel] + win?",
-    }
-    for _, template in ipairs(templates) do
-        local patterns = l.ResultPatterns(template, nil)
-        local winner, loser = l.ParseResult(string.format(template, "Moi Famille", "Rival Famille"), patterns, "Famille")
-        eq(winner, "Moi Famille"); eq(loser, "Rival Famille")
-    end
-    local p = l.ResultPatterns("%2$s lost to %1$s.", "%1$s fled from %2$s.")
-    local w, loser = l.ParseResult("Rival Famille lost to Moi Famille.", p, "Famille"); eq(w, "Moi Famille"); eq(loser, "Rival Famille")
-    w, loser = l.ParseResult("Rival Famille fled from Moi Famille.", p, "Famille"); eq(w, "Moi Famille"); eq(loser, "Rival Famille")
-end)
-
-test("grammar alternatives, Korean particles and Russian wrappers", function()
-    local l = environment().addon.Logic
-    local p = l.ResultPatterns("%s |4has:have; beaten %s.", nil)
-    eq(l.ParseResult("Moi Famille has beaten Rival Famille.", p, "Famille"), "Moi Famille")
-    eq(l.ParseResult("Moi Famille have beaten Rival Famille.", p, "Famille"), "Moi Famille")
-    eq(l.ParseResult("Moi Famille |4has:have; beaten Rival Famille.", p, "Famille"), "Moi Famille")
-    p = l.ResultPatterns("%s|1이;가; %s 승리.", nil)
-    eq(l.ParseResult("Moi Famille가 Rival Famille 승리.", p, "Famille"), "Moi Famille")
-    p = l.ResultPatterns("%s побеждает |3-6(%s).", nil)
-    local w, loser = l.ParseResult("Moi Famille побеждает |3-6(Rival Famille).", p, "Famille")
-    eq(w, "Moi Famille"); eq(loser, "Rival Famille")
-end)
-
-test("button targets exact challenger without changing target or accepting duel", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    eq(e.addon.UI.button.attributes.type, "target")
-    eq(e.addon.UI.button.attributes.unit, "target")
-    eq(e.addon.UI.button.attributes.macrotext, nil)
-    eq(e.addon.UI.button.driver, "[combat] hide; show")
-    eq(e.units.target.name, "Rival"); eq(e.addon.UI.panel:IsShown(), true)
-    assert(e.addon.UI.button.parent ~= e.popup and e.addon.UI.button.parent ~= e.addon.UI.panel)
-    eq(#e.sent, 1); eq(#e.inspections, 1); eq(#e.comparisons, 0)
-    e.clickTarget(); eq(#e.sent, 1)
-    e.popup:Hide(); eq(e.addon.request, nil)
-    eq(e.addon.UI.button.attributes.macrotext, nil); eq(e.addon.UI.panel:IsShown(), false)
-end)
-
-test("mouseovers and nameplates allow inspection without targeting the player", function()
-    local e = environment(); e.units.mouseover = e.units.target; e.units.target = nil
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    eq(e.inspections[1], "mouseover"); eq(e.units.target, nil)
-    e = environment(); e.units.nameplate1 = e.units.target; e.units.target = nil
-    e.plates = { { namePlateUnitToken = "nameplate1" } }
-    e.event("DUEL_REQUESTED", "Rival Famille"); eq(e.inspections[1], "nameplate1")
-end)
-
-test("secure target click selects a different challenger without macro execution or peer addon", function()
-    for _, token in ipairs({ "mouseover", "nameplate1" }) do
-        local e = environment(); e.disableMacros = true
-        e.units[token] = e.units.target
-        e.units.target = { name = "Autre", surname = "Famille", guid = "Player-1-000003" }
-        if token == "nameplate1" then e.plates = { { namePlateUnitToken = token } } end
-        e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-        eq(e.units.target.name, "Autre")
-        eq(e.addon.UI.button.attributes.unit, token)
-        e.clickTarget()
-        eq(e.units.target.guid, e.other)
-        eq(e.addon.metrics.targetClicks, 1); eq(e.addon.metrics.targetHits, 1)
-        e.event("INSPECT_READY", e.other)
-        eq(table.concat(e.addon.request.talents.points, "/"), "0/21/30")
-        eq(e.addon.metrics.inspectReplies, 1); eq(e.addon.metrics.received, 0)
-    end
-end)
-
-test("two separate name strings identify the challenger without any realm API", function()
+test("only a small secure button is displayed with no remaining data features", function()
     local e = environment()
-    eq(e.addon.Data.UnitName("target"), "Rival Famille")
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    eq(e.addon.request.guid, e.other); eq(e.inspections[1], "target")
-    e.clickTarget(); eq(e.addon.lastTarget.confirmed, true)
-    e.event("INSPECT_READY", e.other); assert(e.addon.request.talents)
-end)
-
-test("a recycled nameplate is revalidated immediately before the click", function()
-    local e = environment(); e.disableMacros = true
-    e.units.nameplate1 = e.units.target; e.units.target = nil
-    e.plates = { { namePlateUnitToken = "nameplate1" } }
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    eq(e.addon.UI.button.attributes.unit, "nameplate1")
-    e.units.nameplate1 = { name = "Autre", surname = "Famille", guid = "Player-1-000003" }
-    e.clickTarget()
-    eq(e.units.target, nil); eq(e.addon.metrics.targetHits, 0)
-    eq(e.addon.UI.button.attributes.unit, nil)
-    eq(e.addon.UI.button.attributes.macrotext, "/targetexact Rival Famille")
-    e.event("INSPECT_READY", e.other); eq(e.addon.request.talents, nil)
-end)
-
-test("fallback target macro always keeps both name parts", function()
-    local e = environment(); e.units.target = nil
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    eq(e.addon.UI.button.attributes.macrotext, "/targetexact Rival Famille")
-    e.event("DUEL_REQUESTED", "Rival-Remote"); e.advance(0.25)
-    eq(e.addon.UI.button.attributes.macrotext, "/targetexact Rival Remote")
-end)
-
-test("players with the same first name are distinguished by their surname", function()
-    local e = environment(); e.disableMacros = true
-    e.units.mouseover = { name = "Bia", surname = "Fine", guid = e.other }
-    e.units.target = { name = "Bia", surname = "Autre", guid = "Player-1-000003" }
+    eq(#e.created, 3); eq(e.addon.UI.panel, nil); eq(e.addon.UI.tip, nil)
+    eq(e.addon.UI.button.width, 120); eq(e.addon.UI.button.height, 24)
+    assert(e.addon.UI.button.template:find("SecureActionButtonTemplate", 1, true))
+    assert(e.addon.UI.button.parent ~= e.popup)
+    eq(e.addon.UI.button:IsShown(), false)
     e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
-    eq(e.addon.request.name, "Bia Fine"); eq(e.addon.request.guid, e.other)
-    eq(e.inspections[1], "mouseover"); eq(e.units.target.surname, "Autre")
-    e.clickTarget(); eq(e.units.target.surname, "Fine"); eq(e.addon.metrics.targetHits, 1)
-    e.event("INSPECT_READY", e.other); assert(e.addon.request.talents)
+    eq(e.addon.UI.button:IsShown(), true); eq(e.addon.UI.button.text, "Cibler")
+    e.advance(20); e.click()
+    eq(e.forbiddenCalls, 0); eq(WhoDuelingDB.marker, "old data")
+    eq(next(SlashCmdList), nil)
+    eq(e.addon.frame.events.INSPECT_READY, nil)
+    eq(e.addon.frame.events.CHAT_MSG_ADDON, nil)
+    eq(e.addon.frame.events.CHAT_MSG_SYSTEM, nil)
+    assert(not TEST_TOC:find("SavedVariables", 1, true))
 end)
 
-test("full-name macro selects the exact surname before requesting inspection", function()
+test("the challenger is targeted only on click without accepting the duel", function()
     local e = environment()
-    e.units.nearby = { name = "Bia", surname = "Fine", guid = e.other }
+    e.units.mouseover = { name = "Bia", surname = "Fine", guid = e.other }
+    local previous = e.units.target
+    e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+    eq(e.units.target, previous); eq(e.targetCalls, 0)
+    eq(e.addon.UI.button.attributes.type, "target")
+    eq(e.addon.UI.button.attributes.unit, "mouseover")
+    e.click(); eq(e.units.target.guid, e.other); eq(e.targetCalls, 1)
+    eq(e.popup:IsShown(), true); eq(e.forbiddenCalls, 0)
+end)
+
+test("the fallback macro preserves both name parts and selects the correct homonym", function()
+    local e = environment()
     e.units.target = { name = "Bia", surname = "Autre", guid = "Player-1-000003" }
-    e.dueler = e.other
+    e.units.nearby = { name = "Bia", surname = "Fine", guid = e.other }
     e.event("DUEL_REQUESTED", "Bia-Fine"); e.advance(0.25)
-    eq(e.addon.UI.button.attributes.type, "macro")
     eq(e.addon.UI.button.attributes.macrotext, "/targetexact Bia Fine")
-    eq(e.addon.request.guid, e.other); eq(#e.inspections, 0)
-    e.clickTarget(); eq(e.units.target.guid, e.other); eq(e.addon.metrics.targetHits, 1)
-    eq(e.inspections[1], "target")
-    e.event("INSPECT_READY", e.other); assert(e.addon.request.talents)
+    e.click(); eq(e.units.target.guid, e.other)
 end)
 
-test("requests accept separate name arguments and reject incomplete identities", function()
+test("known nameplates and group units use the secure unit action", function()
+    for _, token in ipairs({ "nameplate1", "party1" }) do
+        local e = environment()
+        e.units[token] = { name = "Bia", surname = "Fine", guid = e.other }
+        if token == "nameplate1" then e.plates = { { namePlateUnitToken = token } } end
+        e.event("DUEL_REQUESTED", "Bia", "Fine"); e.advance(0.25)
+        eq(e.addon.UI.button.attributes.unit, token)
+        e.click(); eq(e.units.target.guid, e.other)
+    end
+end)
+
+test("recycled unit tokens are checked again immediately before clicking", function()
     local e = environment()
-    e.units.target = { name = "Bia", surname = "Fine", guid = e.other }
-    e.event("DUEL_REQUESTED", "Bia", "Fine"); e.advance(0.25)
-    eq(e.addon.request.name, "Bia Fine"); eq(e.inspections[1], "target")
-    e.event("DUEL_REQUESTED", "Bia")
+    e.units.nameplate1 = { name = "Bia", surname = "Fine", guid = e.other }
+    e.plates = { { namePlateUnitToken = "nameplate1" } }
+    e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+    eq(e.addon.UI.button.attributes.unit, "nameplate1")
+    e.units.nameplate1 = { name = "Bia", surname = "Autre", guid = "Player-1-000004" }
+    local previous = e.units.target
+    e.click(); eq(e.units.target, previous)
+    eq(e.addon.UI.button.attributes.unit, nil)
+    eq(e.addon.UI.button.attributes.macrotext, "/targetexact Bia Fine")
+end)
+
+test("successive requests replace the previous name and GUID", function()
+    local e = environment()
+    e.units.mouseover = { name = "Bia", surname = "Fine", guid = e.other }
+    e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+    eq(e.addon.request.guid, e.other)
+    e.units.focus = { name = "Rival", surname = "Autre", guid = "Player-1-000005" }
+    e.event("DUEL_REQUESTED", "Rival Autre"); e.advance(0.25)
+    eq(e.addon.request.guid, "Player-1-000005")
+    eq(e.addon.UI.targetName, "Rival Autre")
+    e.click(); eq(e.units.target.guid, "Player-1-000005")
+end)
+
+test("popup closure or duel finish hides the button and clears its action", function()
+    for _, reason in ipairs({ "accepted", "declined", "cancelled", "expired", "finished" }) do
+        local e = environment()
+        e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+        if reason == "finished" then e.event("DUEL_FINISHED") else e.popup:Hide() end
+        eq(e.addon.request, nil); eq(e.addon.UI.button:IsShown(), false)
+        eq(e.addon.UI.button.attributes.type, nil)
+        eq(e.addon.UI.button.attributes.unit, nil)
+        eq(e.addon.UI.button.attributes.macrotext, nil)
+    end
+end)
+
+test("unrelated or absent popups do not retain a targeting action", function()
+    local e = environment()
+    e.popup:Hide(); e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(1.1)
+    eq(e.addon.request, nil); eq(e.addon.UI.button:IsShown(), false)
+    e.popup:Show(); e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+    e.popup.which = "TRADE_REQUEST"; e.advance(0.25)
     eq(e.addon.request, nil); eq(e.addon.UI.button.driver, "hide")
-    e.event("DUEL_REQUESTED", "Bia", "Fine\n/target Autre")
+end)
+
+test("combat suspends targeting and replaces stale actions on exit", function()
+    local e = environment()
+    e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+    e.combat(true); eq(e.addon.UI.button:IsShown(), false)
+    e.popup:Hide(); e.popup:Show()
+    e.event("DUEL_REQUESTED", "Rival Autre"); e.advance(0.25)
+    eq(e.addon.UI.targetName, "Bia Fine")
+    e.click(); eq(e.targetCalls, 0)
+    e.combat(false)
+    eq(e.addon.UI.button:IsShown(), true)
+    eq(e.addon.UI.button.attributes.macrotext, "/targetexact Rival Autre")
+    e.combat(true); e.popup:Hide(); e.combat(false)
+    eq(e.addon.UI.button:IsShown(), false); eq(e.addon.UI.button.attributes.type, nil)
+end)
+
+test("loading during combat delays creation of the protected button", function()
+    local e = environment("frFR", true)
+    eq(e.addon.UI.button, nil)
+    e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+    eq(e.addon.UI.button, nil)
+    e.combat(false)
+    eq(e.addon.UI.button:IsShown(), true)
+    eq(e.addon.UI.button.attributes.macrotext, "/targetexact Bia Fine")
+end)
+
+test("button stays centred below a moving scaled popup and freezes position in combat", function()
+    local e = environment()
+    e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+    eq(e.addon.UI.anchorX, 560); eq(e.addon.UI.anchorY, 294)
+    e.popup.left, e.popup.top, e.popup.scale = 600, 500, 0.8
+    e.advance(0.25); eq(e.addon.UI.anchorX, 608); eq(e.addon.UI.anchorY, 314)
+    e.combat(true); e.popup.top = 700; e.advance(0.25)
+    eq(e.addon.UI.anchorY, 314)
+    e.combat(false); eq(e.addon.UI.anchorY, 474)
+end)
+
+test("invalid or incomplete requests clear the previous action", function()
+    local e = environment()
+    e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+    e.event("DUEL_REQUESTED", "Bia")
+    eq(e.addon.request, nil); eq(e.addon.UI.button:IsShown(), false)
+    e.event("DUEL_REQUESTED", { secret = true })
     eq(e.addon.request, nil)
 end)
 
-test("unmodified unit identity preserves a surname hidden in the display settings", function()
+test("hardcore requests close the ordinary duel button", function()
+    local e = environment()
+    e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
+    e.event("DUEL_TO_THE_DEATH_REQUESTED", "Bia Fine")
+    eq(e.addon.request, nil); eq(e.addon.UI.button:IsShown(), false)
+end)
+
+test("targeting remains available while the popup stays open beyond the old data timeout", function()
+    local e = environment()
+    e.units.nearby = { name = "Bia", surname = "Fine", guid = e.other }
+    e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(60)
+    eq(e.addon.UI.button:IsShown(), true)
+    e.click(); eq(e.units.target.guid, e.other)
+    eq(e.forbiddenCalls, 0)
+end)
+
+test("unit names remain complete when surname display is disabled or APIs fall back", function()
     local e = environment()
     UnitName = function() return "Bia" end
     UnitNameUnmodified = function() return "Bia", "Fine" end
-    eq(e.addon.Data.UnitName("target"), "Bia Fine")
+    eq(e.addon.Data.UnitName("mouseover"), "Bia Fine")
+    UnitNameUnmodified = nil
+    UnitName = function() return "Bia", "Fine" end
+    eq(e.addon.Data.UnitName("mouseover"), "Bia Fine")
 end)
 
-test("addon sender link format matches the full first-name surname identity", function()
-    local e = environment()
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    local reply = table.concat({ e.addon.Logic.PROTOCOL, "R", e.addon.request.token,
-        e.other, e.me, "N", "-", "-", "42", "0", "21", "30" }, "|")
-    eq(e.sent[1].name, "Rival Famille")
-    e.event("CHAT_MSG_ADDON", "WHODUELING", reply, "WHISPER", "Rival-Autre")
-    eq(e.addon.metrics.received, 0)
-    e.event("CHAT_MSG_ADDON", "WHODUELING", reply, "WHISPER", "Rival-Famille")
-    eq(e.addon.metrics.received, 1); assert(e.addon.request.sharedTalents)
-end)
-
-test("clicking an available challenger restarts inspection after timeout", function()
-    local e = environment(); local peer = e.units.target; e.units.target = nil
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25); e.advance(10)
-    eq(e.addon.request.expired, true)
-    e.units.mouseover = peer; e.clickTarget()
-    eq(e.units.target.guid, e.other); eq(e.addon.request.expired, nil)
-    eq(#e.inspections, 1); assert(e.addon.request.deadline > e.time)
-    e.event("INSPECT_READY", e.other); assert(e.addon.request.talents)
-end)
-
-test("inspect tree fallback requires valid data and supports an absent validity API", function()
-    local e = environment(); e.noInspectConfig = true
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.event("INSPECT_READY", e.other)
-    eq(e.addon.request.talents.treeID, 42)
-    e = environment(); e.invalidTalents = true
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.event("INSPECT_READY", e.other)
-    eq(e.addon.request.talents, nil)
-    e = environment(); C_Traits.HasValidInspectData = nil
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.event("INSPECT_READY", e.other)
-    assert(e.addon.request.talents)
-end)
-
-test("duel requests never trigger the crashing Blizzard achievement comparison", function()
-    local e = environment()
-    SetAchievementComparisonUnit = function(unit)
-        e.comparisons[#e.comparisons + 1] = unit
-        error("Blizzard summary comparison must not be requested")
-    end
-    eq(e.addon.frame.events.INSPECT_ACHIEVEMENT_READY, nil)
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25); e.clickTarget()
-    e.event("INSPECT_READY", e.other); e.advance(5)
-    eq(#e.comparisons, 0); assert(e.addon.request.talents)
-end)
-
-test("inspection sorts groups, preserves zero and ignores wrong or obsolete GUIDs", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille")
-    e.event("INSPECT_READY", e.me); eq(e.addon.request.talents, nil)
-    e.event("INSPECT_READY", e.other)
-    eq(table.concat(e.addon.request.talents.points, "/"), "0/21/30")
-    eq(e.addon.request.talents.names[1], "Arcane")
-    e.units.target = { name = "Autre", surname = "Famille", guid = "Player-1-000003" }
-    e.event("DUEL_REQUESTED", "Autre Famille"); e.advance(2.1)
-    e.event("INSPECT_READY", e.other); eq(e.addon.request.talents, nil)
-end)
-
-test("late responses and target changes cannot populate the wrong player's data", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille")
-    e.units.target = { name = "Autre", surname = "Famille", guid = "Player-1-000003" }
-    e.event("INSPECT_READY", e.other); eq(e.addon.request.talents, nil)
-    e.compared = { wins = "10", losses = "3" }
-    e.event("INSPECT_ACHIEVEMENT_READY", e.other); eq(e.addon.request.stats, nil)
-    e.advance(10); e.event("INSPECT_READY", e.other); eq(e.addon.request.talents, nil)
-    e.event("DUEL_FINISHED"); e.event("INSPECT_READY", e.other); eq(e.addon.request, nil)
-end)
-
-test("missing inspection becomes unavailable after ten seconds", function()
-    local e = environment(); e.units.target = nil; e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    assert(e.addon.UI.lines[2].text:find(e.addon.L.loading, 1, true))
-    e.advance(10)
-    assert(e.addon.UI.lines[2].text:find(e.addon.L.unavailable, 1, true))
-    eq(#e.addon.UI.lines, 3); eq(e.addon.UI.lines[3].text, "")
-    eq(#e.sent, 0); eq(#e.inspections, 0)
-end)
-
-test("native stats require catalogued counters and missing values are not zero", function()
-    local e = environment(); e.noCounters = true; e.addon.Data.DiscoverCounters()
-    e.native = { wins = "55", losses = "22" }
-    eq(e.addon.Data.Statistics(false), nil)
-    e.noCounters = false; e.addon.Data.DiscoverCounters()
-    eq(e.addon.Data.Statistics(false).wins, 55)
-    e.native = { wins = "0", losses = "--" }
-    local stats = e.addon.Data.Statistics(false)
-    eq(stats.wins, 0); eq(stats.losses, nil)
-    local text = e.addon.UI.StatsText(stats)
-    assert(text:find("— duels", 1, true)); assert(text:find("0 victoires", 1, true))
-end)
-
-test("the reported Forever damage counters cannot become duel statistics", function()
-    local e = environment("enUS")
-    GetAchievementInfo = function(id)
-        return id, id == 527 and "Largest hit received" or "Total damage received"
-    end
-    e.native = { wins = "12345", losses = "67890" }
-    e.addon.Data.DiscoverCounters()
-    eq(e.addon.Data.counters.wins, nil)
-    eq(e.addon.Data.counters.losses, nil)
-    eq(e.addon.Data.Statistics(false), nil)
-    local stats, source = e.addon.Data.SelfProfile()
-    eq(source, "L"); eq(stats.wins, 0); eq(stats.losses, 0)
-end)
-
-test("duel counters are discovered by meaning, independently of their IDs", function()
-    for _, locale in ipairs({ "enUS", "frFR", "deDE", "esES", "esMX", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW" }) do
-        local e = environment(locale)
-        e.entries[3].id, e.entries[4].id = 7771, 7772
-        e.native = { wins = "12", losses = "8" }
-        e.addon.Data.DiscoverCounters()
-        eq(e.addon.Data.counters.wins, 7771); eq(e.addon.Data.counters.losses, 7772)
-        eq(e.addon.Data.counterNames.wins, e.addon.L.statWins)
-        eq(e.addon.Data.Statistics(false).wins, 12)
-        for _, id in ipairs(e.calls) do assert(id ~= 527 and id ~= 528) end
-    end
-end)
-
-test("unknown and ambiguous statistic names fail closed", function()
-    local e = environment("enUS")
-    e.entries[3].name = "Duels won yesterday"
-    e.entries[4].name = "Something else"
-    e.addon.Data.DiscoverCounters()
-    eq(e.addon.Data.counters.wins, nil); eq(e.addon.Data.counters.losses, nil)
-    e.entries[3].name, e.entries[4].name = nil, nil
-    e.entries[#e.entries + 1] = { id = 9003, key = "wins" }
-    e.addon.Data.DiscoverCounters()
-    eq(e.addon.Data.counters.wins, nil); eq(e.addon.Data.counters.losses, 9002)
-    e.entries[#e.entries] = nil
-    e.categories = { 1, 2 }
-    e.addon.Data.DiscoverCounters()
-    eq(e.addon.Data.counters.wins, 9001); eq(e.addon.Data.counters.losses, 9002)
-end)
-
-test("combat does not mutate protected attributes and clears stale targets on exit", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    COMBAT = true; e.event("PLAYER_REGEN_DISABLED"); e.popup:Hide()
-    e.popup:Show(); e.units.target = { name = "Autre", surname = "Famille", guid = "Player-1-000003" }
-    e.event("DUEL_REQUESTED", "Autre Famille"); e.advance(0.25)
-    eq(e.addon.UI.combatLabel.text, e.addon.L.combat)
-    eq(e.addon.UI.targetName, "Rival Famille")
-    COMBAT = false; e.event("PLAYER_REGEN_ENABLED")
-    eq(e.addon.UI.targetName, "Autre Famille")
-    COMBAT = true; e.event("DUEL_FINISHED"); COMBAT = false; e.event("PLAYER_REGEN_ENABLED")
-    eq(e.addon.UI.button.driver, "hide"); eq(e.addon.UI.button.attributes.macrotext, nil)
-end)
-
-test("other popups and refused requests don't record duels", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    e.popup.which = "TRADE_REQUEST"; e.advance(0.25)
-    eq(e.addon.request, nil); eq(e.addon.character.wins, 0); eq(e.addon.character.losses, 0)
-end)
-
-test("secure button follows a moved popup outside combat", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    local firstY = e.addon.UI.anchorY
-    e.addon.UI.panel.top = 520; e.addon.UI.panel.left = 600; e.advance(0.25)
-    eq(e.addon.UI.anchorLeft, 600); eq(e.addon.UI.anchorY, firstY + 120)
-    COMBAT = true; e.addon.UI.panel.top = 700; e.advance(0.25)
-    eq(e.addon.UI.anchorY, firstY + 120)
-end)
-
-test("unusable new request removes the previous opponent's action", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    e.event("DUEL_REQUESTED", { secret = true })
-    eq(e.addon.request, nil); eq(e.addon.UI.button.attributes.macrotext, nil)
-    eq(e.addon.UI.button.driver, "hide")
-end)
-
-test("API wrapper preserves nil holes and rejects secret return values", function()
+test("API wrapper preserves nil holes and rejects secret identities", function()
     local d = environment().addon.Data
     local a, b, c, fourth = d.Call(function() return nil, 2, nil, 4 end)
     eq(a, nil); eq(b, 2); eq(c, nil); eq(fourth, 4)
     eq(d.Call(function() return { secret = true } end), nil)
-end)
-
-local function response(e, source, wins, losses)
-    return table.concat({ e.addon.Logic.PROTOCOL, "R", e.addon.request.token, e.other, e.me, source,
-        wins or "-", losses or "-", "42", "0", "21", "30" }, "|")
-end
-
-test("shared talents preserve provenance and direct inspection has priority", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-    e.event("CHAT_MSG_ADDON", "WHODUELING", response(e, "L", "6", "4"), "WHISPER", "Rival Famille")
-    eq(e.addon.request.sharedStats.wins, 6); eq(e.addon.request.sharedSource, "L")
-    eq(e.addon.UI.lines[3].text, e.addon.L.sharedTalents)
-    eq(e.addon.request.sharedTalents.names[1], "Arcane")
-    e.addon.request.sharedTalents.points = { 10, 11, 30 }
-    e.event("INSPECT_READY", e.other)
-    eq(e.addon.UI.lines[3].text, "")
-    assert(e.addon.UI.lines[2].text:find("0/21/30", 1, true))
-    eq(e.addon.character.wins, 0)
-end)
-
-test("malformed, spoofed, stale, unsolicited and broadcast replies are rejected", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille")
-    local good = response(e, "G", "50", "20")
-    for _, message in ipairs({ "evil", good .. "|extra", good:gsub("|50|", "|-1|"), good:gsub("|21|", "|999999|"), good:gsub("|42|", "|-|"), good:gsub("2|R|", "3|R|", 1) }) do
-        e.event("CHAT_MSG_ADDON", "WHODUELING", message, "WHISPER", "Rival Famille")
-    end
-    e.event("CHAT_MSG_ADDON", "WHODUELING", good, "CHANNEL", "Rival Famille")
-    e.event("CHAT_MSG_ADDON", "WHODUELING", good, "WHISPER", "Imposteur Famille")
-    eq(e.addon.request.sharedStats, nil)
-    e.advance(10); e.event("CHAT_MSG_ADDON", "WHODUELING", good, "WHISPER", "Rival Famille")
-    eq(e.addon.request.sharedStats, nil); assert(e.addon.metrics.rejected >= 9)
-end)
-
-test("old profiles that could mislabel damage are rejected", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille")
-    local old = response(e, "G", "12345", "67890"):gsub("^2|", "1|")
-    e.event("CHAT_MSG_ADDON", "WHODUELING", old, "WHISPER", "Rival Famille")
-    eq(e.addon.request.sharedStats, nil); eq(e.addon.metrics.rejected, 1)
-    local current = response(e, "L", "6", "4")
-    e.event("CHAT_MSG_ADDON", "WHODUELING", current, "WHISPER", "Rival Famille")
-    eq(e.addon.request.sharedStats.wins, 6)
-end)
-
-test("peer queries and retries are rate limited", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille")
-    for i = 1, 16 do e.advance(0.25) end
-    eq(#e.sent, 1); e.advance(1); eq(#e.sent, 2)
-    e.advance(4); eq(#e.sent, 2); e.advance(1); eq(#e.sent, 2)
-end)
-
-test("outgoing challenger answers only a verified nearby current opponent", function()
-    local e = environment(); StartDuel("target", false)
-    local query = table.concat({ e.addon.Logic.PROTOCOL, "Q", "100-1", e.other, e.me }, "|")
-    e.event("CHAT_MSG_ADDON", "WHODUELING", query, "WHISPER", "Rival Famille")
-    eq(#e.sent, 1)
-    local f = e.addon.Logic.Decode(e.sent[1].message)
-    eq(f[6], "L"); eq(f[7], "0"); eq(f[8], "0")
-    e.event("CHAT_MSG_ADDON", "WHODUELING", query, "WHISPER", "Rival Famille"); eq(#e.sent, 1)
-    e.time = e.time + 5; e.native = { wins = "12", losses = "8" }
-    e.event("CHAT_MSG_ADDON", "WHODUELING", query, "WHISPER", "Rival Famille")
-    eq(e.addon.Logic.Decode(e.sent[2].message)[6], "G")
-    e.units.target = nil; e.time = e.time + 5
-    e.event("CHAT_MSG_ADDON", "WHODUELING", query, "WHISPER", "Rival Famille"); eq(#e.sent, 2)
-    e = environment(); e.event("CHAT_MSG_ADDON", "WHODUELING", query, "WHISPER", "Rival Famille"); eq(#e.sent, 0)
-end)
-
-test("incoming and outgoing wins, losses and retreat count exactly once", function()
-    local e = environment(); e.event("DUEL_REQUESTED", "Rival Famille"); e.event("DUEL_FINISHED")
-    e.addon.Result("Moi Famille a vaincu Rival Famille en duel.", 1)
-    e.addon.Result("Moi Famille a vaincu Rival Famille en duel.", 1)
-    eq(e.addon.character.wins, 1)
-    StartDuel("target", false); e.addon.Result("Rival Famille a vaincu Moi Famille en duel.", 2)
-    eq(e.addon.character.losses, 1)
-    e.addon.Result("Rival Famille a fui face à Moi Famille en duel.", 3)
-    eq(e.addon.character.wins, 2)
-    local record = e.addon.Logic.Opponent(e.addon.character, "Rival Famille", e.other)
-    eq(record.wins, 2); eq(record.losses, 1)
-    e.addon.Result("Other Famille a vaincu Rival Famille en duel.", 4); eq(e.addon.character.wins, 2)
-    e.addon.Result("Moi Famille a vaincu Rival Famille en duel.", 5); eq(e.addon.character.wins, 3)
-end)
-
-test("duplicate fallback window allows later rematches", function()
-    local e = environment(); e.addon.Result("Moi Famille a vaincu Rival Famille en duel.")
-    e.addon.Result("Moi Famille a vaincu Rival Famille en duel."); eq(e.addon.character.wins, 1)
-    e.time = e.time + 3; e.addon.Result("Moi Famille a vaincu Rival Famille en duel."); eq(e.addon.character.wins, 2)
-end)
-
-test("hardcore requests are excluded from the panel and records", function()
-    local e = environment(); e.event("DUEL_TO_THE_DEATH_REQUESTED", "Rival Famille")
-    e.addon.Result("Moi Famille a vaincu Rival Famille en duel.", 1); eq(e.addon.character.wins, 0)
-    eq(e.addon.request, nil)
-    StartDuel("target", true); e.addon.Result("Rival Famille a vaincu Moi Famille en duel.", 2); eq(e.addon.character.losses, 0)
-    e.event("DUEL_REQUESTED", "Rival Famille"); e.addon.Result("Moi Famille a vaincu Rival Famille en duel.", 3); eq(e.addon.character.wins, 1)
-end)
-
-test("SavedVariables persist and characters/GUIDs remain separate", function()
-    local e = environment(); e.addon.Result("Moi Famille a vaincu Rival Famille en duel.", 1)
-    local db = WhoDuelingDB
-    e = environment("deDE", db); eq(e.addon.character.wins, 1)
-    local l = e.addon.Logic
-    local _, otherCharacter = l.Character(db, "Player-1-000099"); eq(otherCharacter.wins, 0)
-    local char = { opponents = {}, names = {} }
-    l.Opponent(char, "Rival Famille").wins = 2
-    eq(l.Opponent(char, "Rival Famille", "Player-1-000002").wins, 2)
-    eq(l.Opponent(char, "Rival Famille", "Player-1-000003").wins, 0)
-    eq(char.opponents["Player-1-000002"].wins, 2)
-end)
-
-test("native inspection UI is not interrupted", function()
-    local e = environment(); InspectFrame = newFrame(); InspectFrame:Show()
-    e.event("DUEL_REQUESTED", "Rival Famille"); eq(#e.inspections, 0)
-    InspectFrame:Hide(); e.advance(2); eq(#e.inspections, 1)
-end)
-
-test("localized panel accommodates long strings and diagnostic stays local", function()
-    for _, locale in ipairs({ "enUS", "frFR", "deDE", "esES", "esMX", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW" }) do
-        local e = environment(locale); e.event("DUEL_REQUESTED", "Rival Famille"); e.advance(0.25)
-        local height = 0
-        for _, line in ipairs(e.addon.UI.lines) do if line.text ~= "" then height = height + line:GetStringHeight() end end
-        assert(e.addon.UI.panel.height > height)
-        local sent = #e.sent
-        e.addon.Diagnostic(); eq(#e.sent, sent); assert(#e.chats > 10)
-        eq(e.chats[#e.chats], "|cff80c0ffWhoDueling|r · " .. e.addon.L.sharing)
-        assert(e.chats[1]:find("1.0.3", 1, true))
-    end
 end)
 
 print(passed .. " behavioral tests passed.")

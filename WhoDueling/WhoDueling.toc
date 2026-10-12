@@ -1,19 +1,18 @@
 ## Interface: 16001
 ## Title: WhoDueling
-## Notes: Target your duel challenger and inspect their talents.
-## Notes-frFR: Ciblez le joueur qui vous défie en duel et consultez ses talents.
-## Notes-deDE: Den Duellherausforderer anvisieren und seine Talente ansehen.
-## Notes-esES: Selecciona a quien te reta a un duelo y consulta sus talentos.
-## Notes-esMX: Selecciona a quien te reta a un duelo y consulta sus talentos.
-## Notes-itIT: Seleziona chi ti sfida a duello e controlla i suoi talenti.
-## Notes-ptBR: Selecione quem desafia você para um duelo e consulte seus talentos.
-## Notes-ruRU: Выберите вызвавшего вас на дуэль игрока и изучите его таланты.
-## Notes-koKR: 결투 신청자를 대상으로 지정하고 특성을 확인합니다.
-## Notes-zhCN: 选中向你发起决斗的玩家并查看其天赋。
-## Notes-zhTW: 選取向你發起決鬥的玩家並查看其天賦。
+## Notes: A small button to target the player challenging you to a duel.
+## Notes-frFR: Un petit bouton pour cibler le joueur qui vous défie en duel.
+## Notes-deDE: Eine kleine Schaltfläche zum Anvisieren deines Duellherausforderers.
+## Notes-esES: Un pequeño botón para seleccionar a quien te reta a un duelo.
+## Notes-esMX: Un pequeño botón para seleccionar a quien te reta a un duelo.
+## Notes-itIT: Un piccolo pulsante per selezionare chi ti sfida a duello.
+## Notes-ptBR: Um pequeno botão para selecionar quem desafia você para um duelo.
+## Notes-ruRU: Небольшая кнопка для выбора вызвавшего вас на дуэль игрока.
+## Notes-koKR: 결투 신청자를 대상으로 지정하는 작은 버튼입니다.
+## Notes-zhCN: 用于选中向你发起决斗的玩家的小按钮。
+## Notes-zhTW: 用於選取向你發起決鬥的玩家的小按鈕。
 ## Author: Syntaxucre
-## Version: 1.0.3
-## SavedVariables: WhoDuelingDB
+## Version: 1.0.4
 
 Localization.lua
 Logic.lua
