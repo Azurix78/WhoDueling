@@ -1,36 +1,45 @@
 # WhoDueling 1.0.4
 
-Addon multilingue pour **WoW Forever 1.60.1 / interface 16001**, par Syntaxucre.
+A small addon for **WoW Forever 1.60.1 / interface 16001**, by Syntaxucre.
 
-Un petit bouton **Who dueled me?** apparaît sous une demande de duel ordinaire. Il sélectionne le joueur qui t’a défié, avec son prénom et son nom de famille complets. La version 1.0.4 garde uniquement cette fonction et conserve le ciblage validé en jeu en 1.0.3.
+When a player challenges you to a regular duel, a **Who dueled me?** button appears below the Blizzard dialog. Click it to target the challenger using their complete first name and surname. The button hides during combat and disappears when the request closes.
+
+## CurseForge upload
+
+The ready-to-upload file is **`dist/WhoDueling-1.0.4.zip`**. Select the **Forever** flavor and game version **1.60.1**.
+
+The [upload guide](curseforge/UPLOAD.md) includes all project and file fields. Project page materials:
+
+- [English description](curseforge/DESCRIPTION.md)
+- [Summary](curseforge/SUMMARY.txt)
+- [Changelog](WhoDueling/CHANGELOG.md)
+- [512 × 512 PNG logo](curseforge/icon.png) and [editable SVG](curseforge/icon.svg)
+
+The ZIP contains only the installable `WhoDueling/` folder. Installers, tests, development files, and project page materials stay outside it.
 
 ## Installation
 
-Double-cliquer sur **[Installer-Addon.cmd](Installer-Addon.cmd)** à la racine du projet. La fenêtre affiche le résultat et attend une touche avant de se fermer. Si Windows exige les droits administrateur, accepter la demande UAC. Garder le lanceur à côté de `Install-Addon.ps1`, des dossiers `scripts` et `WhoDueling`.
+Install using the CurseForge app for your Forever installation, or extract the ZIP's `WhoDueling` folder into your game's `Interface/AddOns` directory. The TOC must be at `AddOns/WhoDueling/WhoDueling.toc`.
 
-Ou, depuis PowerShell dans le dossier du projet :
+For installation from this source project, double-click **[Installer-Addon.cmd](Installer-Addon.cmd)**. The window displays the result and waits for a key before closing. Accept the Windows administrator prompt if needed. Keep the launcher next to `Install-Addon.ps1`, `scripts/`, and `WhoDueling/`.
+
+Alternatively, run PowerShell from the project directory:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Addon.ps1
 ```
 
-Destination : `C:\Program Files (x86)\World of Warcraft\_classic_beta_\Interface\AddOns\WhoDueling`.
+The default destination is `C:\Program Files (x86)\World of Warcraft\_classic_beta_\Interface\AddOns\WhoDueling`.
 
-Prévisualiser : ajouter `-WhatIf`. Choisir une autre installation : ajouter `-AddOnsPath 'D:\Games\World of Warcraft\_classic_beta_\Interface\AddOns'`.
+Add `-WhatIf` to preview the copy. Choose another installation with `-AddOnsPath 'D:\Games\World of Warcraft\_classic_beta_\Interface\AddOns'`.
 
-Le script vérifie les sources et les empreintes des fichiers copiés. Il copie uniquement les fichiers distribuables, écrase leurs versions précédentes et préserve les autres fichiers. Il refuse les chemins redirigés par une jonction. En cas de refus d’accès avec la commande PowerShell, ouvrir PowerShell **en tant qu’administrateur** et relancer.
+The installer verifies source files and copied hashes, overwrites distributed files, and preserves other files. It rejects symbolic links and junctions. If the PowerShell command reports access denied, open PowerShell **as administrator** and run it again.
 
-**Première installation : redémarrer WoW**, puis activer WhoDueling. Pour cette mise à jour, **`/reload` suffit**.
+After the first installation, **restart WoW** and enable WhoDueling. For an update while the addon is already loaded, use **`/reload`**.
 
-Pour une installation manuelle, extraire `dist/WhoDueling-1.0.4.zip` dans AddOns. Le TOC doit être à `AddOns/WhoDueling/WhoDueling.toc`. Construire l’archive avec `Build-Release.ps1` si elle n’est pas présente après un téléchargement du dépôt.
+See the [addon guide](WhoDueling/README.md) for usage and validation details. All project text and the button label are in English.
 
-## Utilisation
-
-Le bouton se masque en combat et disparaît avec la demande de duel. Son libellé **Who dueled me?** est identique dans toutes les langues ; la description de l’addon reste traduite selon le client. L’adversaire n’a besoin d’aucun addon.
-
-Voir le [guide](WhoDueling/README.md) pour les langues et les vérifications en jeu.
-
-## Développement
+## Development and packaging
 
 ```powershell
 npm install
@@ -39,6 +48,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\Packaging.Tests.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Build-Release.ps1
 ```
 
-Les tests Lua utilisent Fengari et vérifient la syntaxe Lua 5.1. Les tests PowerShell utilisent des dossiers temporaires du projet. L’archive contient uniquement `WhoDueling/` ; les scripts d’installation restent dans le projet.
+Lua tests use Fengari and check Lua 5.1 syntax. PowerShell tests use temporary directories in the project and check installation, updates, path handling, and ZIP entry hashes. The build prints the upload archive path and its SHA256 checksum.
 
-Références techniques : [noms complets Forever](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_FrameXMLUtil/Camelot/NameUtil.lua), [événements de duel](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/DuelInfoDocumentation.lua), [boutons sécurisés](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua).
+To recreate the project page logo on Windows:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\curseforge\Build-Icon.ps1
+```
+
+## Source and license
+
+[Source code](https://github.com/Azurix78/WhoDueling) · [Issues](https://github.com/Azurix78/WhoDueling/issues) · [MIT license](WhoDueling/LICENSE)
+
+Technical references: [Forever names](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_FrameXMLUtil/Camelot/NameUtil.lua), [duel events](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/DuelInfoDocumentation.lua), and [secure buttons](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua).

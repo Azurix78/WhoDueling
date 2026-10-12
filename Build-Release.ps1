@@ -22,4 +22,5 @@ try {
     finally { $zip.Dispose() }
 }
 finally { $stream.Dispose() }
-Write-Output "Archive : $releasePath"
+Write-Output "Upload archive: $releasePath"
+Write-Output "SHA256: $((Get-FileHash -LiteralPath $releasePath -Algorithm SHA256).Hash)"

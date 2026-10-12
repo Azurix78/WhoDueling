@@ -1,0 +1,1 @@
+Adds a small button to target the player challenging you to a duel in WoW Forever.

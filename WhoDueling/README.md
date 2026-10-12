@@ -10,13 +10,15 @@ Version 1.0.4 provides targeting only. Talent inspection, statistics, duel histo
 
 ## Installation
 
-Double-click `Installer-Addon.cmd` in the project root, then use `/reload` for this update. After the first installation, restart WoW and enable WhoDueling.
+Install the addon for your WoW Forever installation using the CurseForge app, or install it manually as described below. After the first installation, restart WoW and enable WhoDueling. Use `/reload` for updates while the addon is already loaded.
 
-To install manually, extract the `WhoDueling` folder into `World of Warcraft/_classic_beta_/Interface/AddOns`. The TOC file must be located at `AddOns/WhoDueling/WhoDueling.toc`, with no extra folder in between.
+To install manually, extract the ZIP's `WhoDueling` folder into your game's `Interface/AddOns` directory, for example `World of Warcraft/_classic_beta_/Interface/AddOns`. The TOC file must be located at `AddOns/WhoDueling/WhoDueling.toc`, with no extra folder in between.
+
+When installing from the [GitHub source project](https://github.com/Azurix78/WhoDueling), you can also double-click `Installer-Addon.cmd` in the project root. That installer is provided with the source project, rather than the CurseForge addon ZIP.
 
 ## Languages and targeting
 
-The button is labelled **Who dueled me?** in every language. The addon description is translated for `enUS`, `enGB`, `frFR`, `deDE`, `esES`, `esMX`, `itIT`, `ptBR`, `ruRU`, `koKR`, `zhCN`, and `zhTW`, with an English fallback for unknown locales.
+The button is labelled **Who dueled me?** in every client language. The addon description and all project documentation are in English.
 
 Forever uses a first name and surname, without realms. Both parts are always preserved. When a matching unit is available, the button uses the native secure targeting action. Otherwise, it runs a command such as `/targetexact Bia Fine`. The player must be present and targetable by the client.
 

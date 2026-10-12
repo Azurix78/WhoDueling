@@ -2,5 +2,6 @@
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-Addon.ps1" -ElevateOnAccessDenied
 set "installExitCode=%ERRORLEVEL%"
 echo.
-pause
+echo Press any key to close this window . . .
+pause >nul
 exit /b %installExitCode%

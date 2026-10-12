@@ -104,14 +104,14 @@ local function environment(locale, initialCombat)
     return e
 end
 
-test("all locales provide the single button label and translated description", function()
+test("all locales provide the English button label and description", function()
     local addon = environment().addon
     eq(#addon.LocaleKeys, 1)
     for locale, row in pairs(addon.Translations) do
         eq(#row, 1); assert(type(row[1]) == "string" and row[1] ~= "")
         eq(environment(locale).addon.UI.button.text, row[1])
-        if locale ~= "enUS" and locale ~= "enGB" then assert(TEST_TOC:find("## Notes-" .. locale .. ":", 1, true)) end
     end
+    assert(TEST_TOC:find("## Notes: A small button to target the player challenging you to a duel.", 1, true))
     eq(environment("unknown").addon.L.target, "Who dueled me?")
     eq(environment("enGB").addon.L.target, "Who dueled me?")
 end)

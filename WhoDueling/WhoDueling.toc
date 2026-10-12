@@ -1,18 +1,10 @@
 ## Interface: 16001
 ## Title: WhoDueling
 ## Notes: A small button to target the player challenging you to a duel.
-## Notes-frFR: Un petit bouton pour cibler le joueur qui vous défie en duel.
-## Notes-deDE: Eine kleine Schaltfläche zum Anvisieren deines Duellherausforderers.
-## Notes-esES: Un pequeño botón para seleccionar a quien te reta a un duelo.
-## Notes-esMX: Un pequeño botón para seleccionar a quien te reta a un duelo.
-## Notes-itIT: Un piccolo pulsante per selezionare chi ti sfida a duello.
-## Notes-ptBR: Um pequeno botão para selecionar quem desafia você para um duelo.
-## Notes-ruRU: Небольшая кнопка для выбора вызвавшего вас на дуэль игрока.
-## Notes-koKR: 결투 신청자를 대상으로 지정하는 작은 버튼입니다.
-## Notes-zhCN: 用于选中向你发起决斗的玩家的小按钮。
-## Notes-zhTW: 用於選取向你發起決鬥的玩家的小按鈕。
 ## Author: Syntaxucre
 ## Version: 1.0.4
+## X-Website: https://github.com/Azurix78/WhoDueling
+## X-License: MIT
 
 Localization.lua
 Logic.lua

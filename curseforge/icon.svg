@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>WhoDueling</title>
+  <desc>An original question mark inside a targeting reticle, above the initials WD.</desc>
+  <rect width="512" height="512" fill="#111b2b"/>
+  <rect x="16" y="16" width="480" height="480" rx="36" fill="#18273d" stroke="#2b405c" stroke-width="4"/>
+  <g fill="none" stroke="#55d3e5" stroke-width="12" stroke-linecap="round">
+    <circle cx="256" cy="224" r="104"/>
+    <path d="M256 84v52 M256 312v52 M116 224h52 M344 224h52"/>
+  </g>
+  <text x="256" y="278" fill="#f5f7fa" font-family="Segoe UI,Arial,sans-serif" font-size="160" font-weight="700" text-anchor="middle">?</text>
+  <text x="256" y="452" fill="#e7bb70" font-family="Segoe UI,Arial,sans-serif" font-size="56" font-weight="700" text-anchor="middle">WD</text>
+</svg>
