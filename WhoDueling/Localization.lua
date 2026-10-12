@@ -4,6 +4,7 @@ local keys = {
     "game", "sharedGame", "sharedLocal", "treeUnknown", "help", "diagnostic", "yes", "no",
     "build", "locale", "inspect", "comparison", "counters", "messaging", "identity", "sent",
     "received", "rejected", "wins", "losses", "sharing", "since", "counterNames", "sharedTalents", "statWins", "statLosses",
+    "targetAction", "targetClicks", "targetHits", "inspectRequests", "inspectReplies", "lastInspect",
 }
 local translations = {
     enUS = {
@@ -15,6 +16,7 @@ local translations = {
         "Duel counters found", "Addon messages", "Character", "Requests sent", "Replies received",
         "Messages rejected", "Wins", "Losses", "Sharing is limited to nearby duel opponents.",
         "Since your installation", "Duel counter names", "Talents shared by opponent", "Duels won", "Duels lost",
+        "Last target attempt (player / action / confirmed)", "Target clicks", "Target confirmations", "Inspection requests", "Inspection replies", "Last inspected talents",
     },
     frFR = {
         "Cibler", "Talents", "Duels terminés de l’adversaire", "Ton bilan contre ce joueur",
@@ -25,6 +27,7 @@ local translations = {
         "Compteurs de duel trouvés", "Messages d’addon", "Personnage", "Requêtes envoyées", "Réponses reçues",
         "Messages rejetés", "Victoires", "Défaites", "Le partage est limité aux adversaires de duel à proximité.",
         "Depuis ton installation", "Noms des compteurs de duel", "Talents partagés par l’adversaire", "Duels gagnés", "Duels perdus",
+        "Dernier ciblage (joueur / action / confirmé)", "Clics Cibler", "Ciblages confirmés", "Requêtes d’inspection", "Réponses d’inspection", "Derniers talents inspectés",
     },
     deDE = {
         "Anvisieren", "Talente", "Abgeschlossene Duelle des Gegners", "Deine Bilanz gegen diesen Spieler",
@@ -35,6 +38,7 @@ local translations = {
         "Gefundene Duellzähler", "Addon-Nachrichten", "Charakter", "Gesendete Anfragen", "Empfangene Antworten",
         "Abgelehnte Nachrichten", "Siege", "Niederlagen", "Daten werden nur mit Duellgegnern in der Nähe geteilt.",
         "Seit deiner Installation", "Namen der Duellzähler", "Vom Gegner geteilte Talente", "Gewonnene Duelle", "Verlorene Duelle",
+        "Letztes Ziel (Spieler / Aktion / bestätigt)", "Zielklicks", "Bestätigte Ziele", "Inspektionsanfragen", "Inspektionsantworten", "Zuletzt inspizierte Talente",
     },
     esES = {
         "Seleccionar", "Talentos", "Duelos completados del rival", "Tu historial contra este jugador",
@@ -45,6 +49,7 @@ local translations = {
         "Contadores de duelos encontrados", "Mensajes del addon", "Personaje", "Solicitudes enviadas", "Respuestas recibidas",
         "Mensajes rechazados", "Victorias", "Derrotas", "Solo se comparten datos con rivales de duelo cercanos.",
         "Desde tu instalación", "Nombres de los contadores de duelos", "Talentos compartidos por el rival", "Duelos ganados", "Duelos perdidos",
+        "Último objetivo (jugador / acción / confirmado)", "Clics de selección", "Objetivos confirmados", "Solicitudes de inspección", "Respuestas de inspección", "Últimos talentos inspeccionados",
     },
     esMX = {
         "Seleccionar", "Talentos", "Duelos completados del oponente", "Tu historial contra este jugador",
@@ -55,6 +60,7 @@ local translations = {
         "Contadores de duelos encontrados", "Mensajes del addon", "Personaje", "Solicitudes enviadas", "Respuestas recibidas",
         "Mensajes rechazados", "Victorias", "Derrotas", "Solo se comparten datos con oponentes de duelo cercanos.",
         "Desde tu instalación", "Nombres de los contadores de duelos", "Talentos compartidos por el oponente", "Duelos ganados", "Duelos perdidos",
+        "Último objetivo (jugador / acción / confirmado)", "Clics de selección", "Objetivos confirmados", "Solicitudes de inspección", "Respuestas de inspección", "Últimos talentos inspeccionados",
     },
     itIT = {
         "Seleziona", "Talenti", "Duelli completati dell’avversario", "Il tuo bilancio contro questo giocatore",
@@ -65,6 +71,7 @@ local translations = {
         "Contatori di duelli trovati", "Messaggi dell’addon", "Personaggio", "Richieste inviate", "Risposte ricevute",
         "Messaggi rifiutati", "Vittorie", "Sconfitte", "I dati vengono condivisi solo con avversari di duello vicini.",
         "Dalla tua installazione", "Nomi dei contatori di duelli", "Talenti condivisi dall’avversario", "Duelli vinti", "Duelli persi",
+        "Ultimo bersaglio (giocatore / azione / confermato)", "Clic di selezione", "Bersagli confermati", "Richieste di ispezione", "Risposte di ispezione", "Ultimi talenti ispezionati",
     },
     ptBR = {
         "Selecionar", "Talentos", "Duelos concluídos do oponente", "Seu histórico contra este jogador",
@@ -75,6 +82,7 @@ local translations = {
         "Contadores de duelos encontrados", "Mensagens do addon", "Personagem", "Solicitações enviadas", "Respostas recebidas",
         "Mensagens rejeitadas", "Vitórias", "Derrotas", "Dados são compartilhados apenas com oponentes de duelo próximos.",
         "Desde a sua instalação", "Nomes dos contadores de duelos", "Talentos compartilhados pelo oponente", "Duelos vencidos", "Duelos perdidos",
+        "Último alvo (jogador / ação / confirmado)", "Cliques de seleção", "Alvos confirmados", "Solicitações de inspeção", "Respostas de inspeção", "Últimos talentos inspecionados",
     },
     ruRU = {
         "Выбрать", "Таланты", "Завершённые дуэли соперника", "Ваши результаты против этого игрока",
@@ -85,6 +93,7 @@ local translations = {
         "Найденные счётчики дуэлей", "Сообщения аддона", "Персонаж", "Отправленные запросы", "Полученные ответы",
         "Отклонённые сообщения", "Победы", "Поражения", "Обмен данными доступен только с соперниками по дуэли поблизости.",
         "С момента вашей установки", "Названия счётчиков дуэлей", "Таланты, переданные соперником", "Выиграно дуэлей", "Проиграно дуэлей",
+        "Последняя цель (игрок / действие / подтверждено)", "Нажатия выбора цели", "Подтверждённые цели", "Запросы осмотра", "Ответы осмотра", "Последние осмотренные таланты",
     },
     koKR = {
         "대상 지정", "특성", "상대가 완료한 결투", "이 플레이어와의 전적",
@@ -95,6 +104,7 @@ local translations = {
         "발견된 결투 집계", "애드온 메시지", "캐릭터", "보낸 요청", "받은 응답",
         "거부한 메시지", "승리", "패배", "정보는 근처의 결투 상대와만 공유됩니다.",
         "내 애드온 설치 이후", "결투 집계 항목 이름", "상대가 공유한 특성", "결투 승리", "결투 패배",
+        "최근 대상 지정 (플레이어 / 동작 / 확인)", "대상 지정 클릭", "확인된 대상 지정", "살펴보기 요청", "살펴보기 응답", "최근 확인한 특성",
     },
     zhCN = {
         "选中", "天赋", "对手已完成的决斗", "你与该玩家的战绩",
@@ -105,6 +115,7 @@ local translations = {
         "已找到的决斗计数", "插件消息", "角色", "已发送的请求", "已收到的回复",
         "已拒绝的消息", "胜利", "失败", "信息仅与附近的决斗对手分享。",
         "自你的插件安装以来", "决斗计数名称", "对手分享的天赋", "决斗胜利", "决斗失败",
+        "最近选中尝试（玩家 / 操作 / 已确认）", "选中点击次数", "选中确认次数", "观察请求次数", "观察回复次数", "最近观察的天赋",
     },
     zhTW = {
         "選取", "天賦", "對手已完成的決鬥", "你與該玩家的戰績",
@@ -115,6 +126,7 @@ local translations = {
         "已找到的決鬥計數", "插件訊息", "角色", "已傳送的請求", "已收到的回覆",
         "已拒絕的訊息", "勝利", "失敗", "資訊僅與附近的決鬥對手分享。",
         "自你的插件安裝以來", "決鬥計數名稱", "對手分享的天賦", "決鬥勝利", "決鬥失敗",
+        "最近選取嘗試（玩家 / 操作 / 已確認）", "選取點擊次數", "選取確認次數", "觀察請求次數", "觀察回覆次數", "最近觀察的天賦",
     },
 }
 translations.enGB = translations.enUS

@@ -1,13 +1,15 @@
 local addonName, addon = ...
 local Logic, Data, UI, L = addon.Logic, addon.Data, addon.UI, addon.L
 local PREFIX = "WHODUELING"
-addon.version = "1.0.1"
+addon.version = "1.0.2"
 local frame = CreateFrame("Frame")
 addon.frame = frame
-addon.metrics = { sent = 0, received = 0, rejected = 0 }
-local serial, lastInspect, lastComparison = 0, -10, -10
+addon.metrics = { sent = 0, received = 0, rejected = 0, targetClicks = 0, targetHits = 0, inspectRequests = 0, inspectReplies = 0 }
+addon.lastTarget = { name = "—", mode = "—", confirmed = false }
+addon.lastInspect = "—"
+local serial, lastInspect = 0, -10
 local recentResults, lineIDs, replyTimes = {}, {}, {}
-local inspectLease, comparisonLease, duelContext
+local inspectLease, duelContext
 
 local function now() return GetTime() end
 local function publicGUID(guid)
@@ -47,9 +49,9 @@ function addon.CloseRequest()
     local request = addon.request
     if request then request.closed = true end
     addon.request = nil
-    inspectLease, comparisonLease = nil, nil
-    -- Inspection/comparison are shared global resources: don't clear them
-    -- behind Blizzard's inspection UI or another addon.
+    inspectLease = nil
+    -- Inspection is a shared global resource: don't clear it behind
+    -- Blizzard's inspection UI or another addon.
     if UI.panel then UI.Close() end
 end
 
@@ -61,7 +63,7 @@ local function guidForRequest(request)
         local duelGUID = publicGUID(Data.Call(GetDuelerInfo))
         if duelGUID then
             local _, _, _, _, _, name, realm = Data.Call(GetPlayerInfoByGUID, duelGUID)
-            if Logic.SameName(Logic.Name(name, realm or addon.realm), request.name) then request.guid = duelGUID end
+            if Logic.SameName(Data.FullName(name, realm), request.name) then request.guid = duelGUID end
         end
     end
     if request.guid then Logic.Opponent(addon.character, request.name, request.guid) end
@@ -90,10 +92,6 @@ local function inspectionBusy()
         PlayerSpellsFrame and PlayerSpellsFrame.IsInspecting and PlayerSpellsFrame:IsInspecting()
 end
 
-local function comparisonBusy()
-    return AchievementFrameComparison and AchievementFrameComparison.IsShown and AchievementFrameComparison:IsShown()
-end
-
 local function tryData(request)
     if request.closed or now() >= request.deadline or InCombatLockdown() then return end
     local unit, guid = guidForRequest(request)
@@ -105,14 +103,9 @@ local function tryData(request)
         -- No inspection UI is opened and the player's target is not modified.
         if type(NotifyInspect) == "function" then
             local ok = pcall(NotifyInspect, unit)
-            if not ok then inspectLease = nil end
+            if not ok then inspectLease = nil
+            else addon.metrics.inspectRequests = addon.metrics.inspectRequests + 1 end
         else inspectLease = nil end
-    end
-    if not request.stats and not comparisonLease and now() - lastComparison >= 3 and not comparisonBusy() and
-        type(SetAchievementComparisonUnit) == "function" and next(Data.counters or {}) then
-        lastComparison = now()
-        comparisonLease = { request = request, guid = guid, unit = unit, at = now() }
-        if not pcall(SetAchievementComparisonUnit, unit) then comparisonLease = nil end
     end
 end
 
@@ -133,27 +126,34 @@ end
 
 function addon.TargetClicked()
     local request = addon.request
-    if request and not request.closed and not InCombatLockdown() then tryData(request); UI.Render(request) end
+    if request and not request.closed and not InCombatLockdown() then
+        addon.metrics.targetClicks = addon.metrics.targetClicks + 1
+        addon.lastTarget = { name = request.name, guid = request.guid, at = now(), mode = UI.targetMode or "—", confirmed = false }
+        addon.CheckTargeting()
+        -- A click may expose an inspectable target after the initial timeout.
+        -- Give the newly selected opponent a fresh inspection window.
+        if now() >= request.deadline then request.deadline = now() + 10; request.expired = nil end
+        tryData(request); UI.Render(request)
+    end
+end
+
+function addon.CheckTargeting()
+    local attempt = addon.lastTarget
+    if not attempt.at or attempt.confirmed or now() - attempt.at > 1 then return end
+    if Data.UnitName("target") == attempt.name and (not attempt.guid or Data.Call(UnitGUID, "target") == attempt.guid) then
+        attempt.confirmed = true
+        addon.metrics.targetHits = addon.metrics.targetHits + 1
+    end
 end
 
 function addon.InspectReady(guid)
     local lease, request = inspectLease, addon.request
     if not publicGUID(guid) or not lease or not request or lease.request ~= request or guid ~= lease.guid or
         request.closed or now() >= request.deadline or Data.Call(UnitGUID, lease.unit) ~= guid then return end
-    if C_Traits and Data.Call(C_Traits.HasValidInspectData) then
-        local configID = Constants and Constants.TraitConsts and Constants.TraitConsts.INSPECT_TRAIT_CONFIG_ID
-        request.talents = Data.Talents(configID)
-    end
+    addon.metrics.inspectReplies = addon.metrics.inspectReplies + 1
+    request.talents = Data.InspectTalents(lease.unit)
+    addon.lastInspect = request.talents and table.concat(request.talents.points, "/") or L.unavailable
     inspectLease = nil
-    if UI.panel then UI.Render(request) end
-end
-
-function addon.ComparisonReady(guid)
-    local lease, request = comparisonLease, addon.request
-    if not publicGUID(guid) or not lease or not request or lease.request ~= request or guid ~= lease.guid or
-        request.closed or now() >= request.deadline or Data.Call(UnitGUID, lease.unit) ~= guid then return end
-    request.stats = Data.Statistics(true)
-    comparisonLease = nil
     if UI.panel then UI.Render(request) end
 end
 
@@ -230,6 +230,7 @@ end
 
 function addon.Tick()
     if not addon.character then return end
+    addon.CheckTargeting()
     local request = addon.request
     if request then
         if ensureUI() and not request.attached then
@@ -241,11 +242,11 @@ function addon.Tick()
             addon.CloseRequest(); return
         end
         if request.attached then UI.PositionTarget() end
+        if request.attached and not InCombatLockdown() then UI.SetTarget(request.name) end
         if inspectLease and now() - inspectLease.at > 3 then inspectLease = nil end
-        if comparisonLease and now() - comparisonLease.at > 4 then comparisonLease = nil end
         if now() < request.deadline then tryData(request)
         elseif not request.expired then
-            request.expired = true; inspectLease, comparisonLease = nil, nil
+            request.expired = true; inspectLease = nil
             if UI.panel then UI.Render(request) end
         end
     end
@@ -268,13 +269,14 @@ function addon.Diagnostic()
     printLine("locale", GetLocale())
     printLine("identity", addon.playerName .. " / " .. addon.guid)
     printLine("inspect", yes(C_Traits and C_Traits.GetGroupCurrencyInfo and NotifyInspect))
-    printLine("comparison", yes(SetAchievementComparisonUnit and GetComparisonStatistic))
     printLine("counters", (Data.counters.wins or "—") .. " / " .. (Data.counters.losses or "—"))
     printLine("counterNames", (Data.counterNames.wins or L.unavailable) .. " / " .. (Data.counterNames.losses or L.unavailable))
     printLine("game", UI.StatsText(Data.Statistics(false)))
-    printLine("since", UI.StatsText(addon.character))
     printLine("messaging", yes(addon.messaging))
     for _, key in ipairs({ "sent", "received", "rejected" }) do printLine(key, addon.metrics[key]) end
+    printLine("targetAction", addon.lastTarget.name .. " / " .. addon.lastTarget.mode .. " / " .. yes(addon.lastTarget.confirmed))
+    for _, key in ipairs({ "targetClicks", "targetHits", "inspectRequests", "inspectReplies" }) do printLine(key, addon.metrics[key]) end
+    printLine("lastInspect", addon.lastInspect)
     if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("|cff80c0ffWhoDueling|r · " .. L.sharing) end
 end
 
@@ -299,7 +301,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
     elseif event == "DUEL_FINISHED" then addon.CloseRequest()
     elseif event == "INSPECT_READY" then addon.InspectReady(...)
-    elseif event == "INSPECT_ACHIEVEMENT_READY" then addon.ComparisonReady(...)
     elseif event == "CHAT_MSG_ADDON" then addon.Message(...)
     elseif event == "CHAT_MSG_SYSTEM" then
         local message = ...
@@ -312,11 +313,12 @@ frame:SetScript("OnEvent", function(_, event, ...)
             if addon.request then UI.Render(addon.request); tryData(addon.request) end
         end
     elseif event == "PLAYER_TARGET_CHANGED" or event == "UPDATE_MOUSEOVER_UNIT" or event == "NAME_PLATE_UNIT_ADDED" then
+        addon.CheckTargeting()
         if addon.request then tryData(addon.request) end
     end
 end)
 for _, event in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "DUEL_REQUESTED", "DUEL_TO_THE_DEATH_REQUESTED", "DUEL_FINISHED",
-    "INSPECT_READY", "INSPECT_ACHIEVEMENT_READY", "CHAT_MSG_ADDON", "CHAT_MSG_SYSTEM", "PLAYER_REGEN_DISABLED",
+    "INSPECT_READY", "CHAT_MSG_ADDON", "CHAT_MSG_SYSTEM", "PLAYER_REGEN_DISABLED",
     "PLAYER_REGEN_ENABLED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED" }) do
     pcall(frame.RegisterEvent, frame, event)
 end

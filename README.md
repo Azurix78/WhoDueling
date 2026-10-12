@@ -1,8 +1,8 @@
-# WhoDueling 1.0.1
+# WhoDueling 1.0.2
 
 Addon multilingue pour **WoW Forever 1.60.1 / interface 16001**, par Syntaxucre.
 
-Sous une demande de duel, affiche un bouton **Cibler**, les talents `xx/xx/xx`, les statistiques disponibles de l’adversaire et ton bilan contre lui. Aucun duel n’est accepté automatiquement.
+Sous une demande de duel, affiche un bouton **Cibler** et les talents `xx/xx/xx`, avec les noms des trois arbres en infobulle. Aucun duel n’est accepté automatiquement.
 
 ## Installation dans ton client
 
@@ -22,15 +22,15 @@ Le script vérifie les sources et les empreintes des fichiers copiés. Il ne dé
 
 **Première installation : redémarrer WoW**, puis activer WhoDueling. Pour une mise à jour sans nouveau fichier Lua, `/reload` suffit ; sinon redémarrer.
 
-Pour une installation manuelle, extraire `dist/WhoDueling-1.0.1.zip` dans AddOns. Le TOC doit être à `AddOns/WhoDueling/WhoDueling.toc`.
+Pour une installation manuelle, extraire `dist/WhoDueling-1.0.2.zip` dans AddOns. Le TOC doit être à `AddOns/WhoDueling/WhoDueling.toc`. L’archive se construit avec `Build-Release.ps1` si elle n’est pas présente après un téléchargement du dépôt.
 
-La version 1.0.1 corrige la détection des statistiques : les IDs 527 et 528 observés sur Forever désignent des dégâts reçus. Les compteurs de duel sont désormais recherchés par leur nom localisé dans le catalogue du client. Les deux adversaires doivent utiliser au moins 1.0.1 pour partager des données ; l’historique local est conservé.
+La version 1.0.2 retire les statistiques du panneau et les requêtes de comparaison des hauts faits qui pouvaient déclencher l’erreur Blizzard `GetCategoryNumAchievements` (`id="summary"`). Le ciblage utilise une unité vérifiée lorsqu’elle est accessible et l’inspection dispose d’un repli pour retrouver l’arbre de talents. Le diagnostic indique les ciblages confirmés et les réponses d’inspection. Les données sauvegardées sont conservées.
 
 ## Informations et limites
 
-Voir le [guide complet](WhoDueling/README.md) pour les langues, le diagnostic, la provenance des statistiques et le protocole de validation en jeu.
+Voir le [guide complet](WhoDueling/README.md) pour les langues, le diagnostic, l’inspection, le partage et les vérifications en jeu.
 
-L’historique personnel fonctionne sans addon chez l’adversaire. Les données globales et talents dépendent des API du client ; leur disponibilité réelle, le rendu et les restrictions de ciblage doivent encore être vérifiés en jeu. Les tests simulés ne remplacent pas cette étape.
+L’inspection directe ne nécessite aucun addon chez l’adversaire. Si celui-ci possède WhoDueling 1.0.1 ou plus récent, un échange privé peut compléter les talents manquants. La disponibilité des talents, le rendu et les actions sécurisées doivent encore être confirmés dans le client ; les tests simulés ne remplacent pas cette étape.
 
 ## Développement
 

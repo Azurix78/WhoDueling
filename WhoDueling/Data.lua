@@ -12,9 +12,13 @@ function Data.Call(fn, ...)
     return unpack(values, 2, values.n)
 end
 
+function Data.FullName(name, realm)
+    if not realm or realm == "" then realm = addon.realm end
+    return Logic.Name(name, realm)
+end
+
 function Data.UnitName(unit)
-    local name, realm = Data.Call(UnitFullName or UnitName, unit)
-    return Logic.Name(name, realm or addon.realm)
+    return Data.FullName(Data.Call(UnitFullName or UnitName, unit))
 end
 
 function Data.FindUnit(name, guid)
@@ -38,11 +42,13 @@ function Data.FindUnit(name, guid)
     end
 end
 
-function Data.Talents(configID)
+function Data.Talents(configID, treeHint)
     if not C_Traits or not configID then return nil end
     local config = Data.Call(C_Traits.GetConfigInfo, configID)
-    if type(config) ~= "table" or type(config.treeIDs) ~= "table" then return nil end
-    for _, treeID in ipairs(config.treeIDs) do
+    local trees = type(config) == "table" and config.treeIDs
+    if type(trees) ~= "table" or #trees == 0 then trees = treeHint and { treeHint } end
+    if type(trees) ~= "table" then return nil end
+    for _, treeID in ipairs(trees) do
         local display = Data.Call(C_Traits.GetGroupDisplayInfoByTreeID, treeID)
         if type(display) == "table" and #display == 3 then
             local ordered = {}
@@ -69,6 +75,16 @@ function Data.Talents(configID)
             return result
         end
     end
+end
+
+function Data.InspectTalents(unit)
+    if not C_Traits then return nil end
+    if type(C_Traits.HasValidInspectData) == "function" and Data.Call(C_Traits.HasValidInspectData) ~= true then return nil end
+    local configID = Constants and Constants.TraitConsts and Constants.TraitConsts.INSPECT_TRAIT_CONFIG_ID
+    if not configID then return nil end
+    local specID = C_SpecializationInfo and Data.Call(C_SpecializationInfo.GetInspectSpecialization, unit)
+    local treeHint = C_ClassTalents and specID and Data.Call(C_ClassTalents.GetTraitTreeForSpec, specID)
+    return Data.Talents(configID, treeHint)
 end
 
 function Data.SharedTalents(treeID, points)
