@@ -2,7 +2,7 @@
 
 Version **1.0.4**, pour **WoW Forever 1.60.1 / interface 16001**. Auteur : Syntaxucre. Licence MIT.
 
-Lorsqu’un joueur te demande un duel ordinaire, un petit bouton **Cibler** apparaît sous la fenêtre Blizzard. Un clic sélectionne le joueur qui t’a défié, en conservant son **prénom et son nom de famille**. Le ciblage validé en jeu dans la version 1.0.3 est conservé.
+Lorsqu’un joueur te demande un duel ordinaire, un petit bouton **Who dueled me?** apparaît sous la fenêtre Blizzard. Un clic sélectionne le joueur qui t’a défié, en conservant son **prénom et son nom de famille**. Le ciblage validé en jeu dans la version 1.0.3 est conservé.
 
 Le bouton se masque en combat et disparaît lorsque la demande est acceptée, refusée, annulée ou expirée. La demande Blizzard conserve son fonctionnement habituel. Les duels à mort sont exclus.
 
@@ -16,7 +16,7 @@ Pour une installation manuelle, extraire le dossier `WhoDueling` dans `World of 
 
 ## Langues et ciblage
 
-Le bouton et la description sont traduits pour `enUS`, `enGB`, `frFR`, `deDE`, `esES`, `esMX`, `itIT`, `ptBR`, `ruRU`, `koKR`, `zhCN` et `zhTW`, avec repli anglais pour une langue inconnue.
+Le bouton porte le libellé **Who dueled me?** dans toutes les langues. La description est traduite pour `enUS`, `enGB`, `frFR`, `deDE`, `esES`, `esMX`, `itIT`, `ptBR`, `ruRU`, `koKR`, `zhCN` et `zhTW`, avec repli anglais pour une langue inconnue.
 
 Forever utilise un prénom et un nom de famille, sans royaume. Les deux parties sont toujours conservées. Si une unité correspondante est accessible, le bouton utilise l’action sécurisée native de ciblage ; sinon il exécute par exemple `/targetexact Bia Fine`. Le joueur doit être présent et accessible au ciblage du client.
 

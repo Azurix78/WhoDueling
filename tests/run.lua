@@ -112,8 +112,8 @@ test("all locales provide the single button label and translated description", f
         eq(environment(locale).addon.UI.button.text, row[1])
         if locale ~= "enUS" and locale ~= "enGB" then assert(TEST_TOC:find("## Notes-" .. locale .. ":", 1, true)) end
     end
-    eq(environment("unknown").addon.L.target, "Target")
-    eq(environment("enGB").addon.L.target, "Target")
+    eq(environment("unknown").addon.L.target, "Who dueled me?")
+    eq(environment("enGB").addon.L.target, "Who dueled me?")
 end)
 
 test("full first-name surname identity preserves accents and rejects incomplete or injected names", function()
@@ -137,7 +137,7 @@ test("only a small secure button is displayed with no remaining data features", 
     assert(e.addon.UI.button.parent ~= e.popup)
     eq(e.addon.UI.button:IsShown(), false)
     e.event("DUEL_REQUESTED", "Bia Fine"); e.advance(0.25)
-    eq(e.addon.UI.button:IsShown(), true); eq(e.addon.UI.button.text, "Cibler")
+    eq(e.addon.UI.button:IsShown(), true); eq(e.addon.UI.button.text, "Who dueled me?")
     e.advance(20); e.click()
     eq(e.forbiddenCalls, 0); eq(WhoDuelingDB.marker, "old data")
     eq(next(SlashCmdList), nil)

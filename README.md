@@ -2,7 +2,7 @@
 
 Addon multilingue pour **WoW Forever 1.60.1 / interface 16001**, par Syntaxucre.
 
-Un petit bouton **Cibler** apparaît sous une demande de duel ordinaire. Il sélectionne le joueur qui t’a défié, avec son prénom et son nom de famille complets. La version 1.0.4 garde uniquement cette fonction et conserve le ciblage validé en jeu en 1.0.3.
+Un petit bouton **Who dueled me?** apparaît sous une demande de duel ordinaire. Il sélectionne le joueur qui t’a défié, avec son prénom et son nom de famille complets. La version 1.0.4 garde uniquement cette fonction et conserve le ciblage validé en jeu en 1.0.3.
 
 ## Installation
 
@@ -26,7 +26,7 @@ Pour une installation manuelle, extraire `dist/WhoDueling-1.0.4.zip` dans AddOns
 
 ## Utilisation
 
-Le bouton se masque en combat et disparaît avec la demande de duel. Les traductions sont choisies automatiquement selon la langue du client. L’adversaire n’a besoin d’aucun addon.
+Le bouton se masque en combat et disparaît avec la demande de duel. Son libellé **Who dueled me?** est identique dans toutes les langues ; la description de l’addon reste traduite selon le client. L’adversaire n’a besoin d’aucun addon.
 
 Voir le [guide](WhoDueling/README.md) pour les langues et les vérifications en jeu.
 
