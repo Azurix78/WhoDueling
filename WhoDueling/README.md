@@ -1,6 +1,6 @@
 # WhoDueling
 
-Version **1.0.0**, pour **WoW Forever 1.60.1 / interface 16001**. Auteur : Syntaxucre. Licence MIT. Aucune dépendance en jeu.
+Version **1.0.1**, pour **WoW Forever 1.60.1 / interface 16001**. Auteur : Syntaxucre. Licence MIT. Aucune dépendance en jeu.
 
 ## Utilisation
 
@@ -19,11 +19,13 @@ Le bouton est masqué en combat et remplacé par **Disponible hors combat**. Le 
 
 Les talents partagés sont les points de sa configuration active. Les noms d’arbres viennent de ton client lorsque leurs données sont disponibles. Survole la ligne des talents pour voir chaque arbre.
 
-Les statistiques du jeu utilisent les IDs candidats historiques **527 (victoires)** et **528 (défaites)** uniquement s’ils figurent dans le catalogue de statistiques de Forever et ont un nom disponible. Le diagnostic affiche leurs noms : vérifier en jeu qu’ils désignent effectivement ces deux compteurs. Le total affiché est victoires + défaites, pas le nombre de demandes envoyées. Un tiret renvoyé par le jeu reste une information inconnue.
+Les statistiques du jeu sont recherchées dans le catalogue du client par leur nom localisé exact (« Duels won / Duels lost » en anglais, « Duels gagnés / Duels perdus » en français). Aucun ID d’une autre édition n’est supposé valide : sur Forever 1.60.1 build 70338, les IDs 527 et 528 vus dans le diagnostic de 1.0.0 désignent des dégâts reçus. Une traduction non reconnue, un compteur absent ou plusieurs compteurs ambigus donnent une information indisponible. Le total affiché est victoires + défaites, pas le nombre de demandes envoyées. Un tiret renvoyé par le jeu reste une information inconnue.
 
 ## Partage et sauvegarde
 
 Si les deux adversaires possèdent WhoDueling, une requête privée d’addon est envoyée pour compléter les informations. Aucun message de chat visible, canal public, serveur externe ou compte n’est utilisé. L’addon ne répond qu’à un adversaire de duel identifié et accessible à proximité. Les échanges peuvent échouer, notamment entre factions ou en cas de restrictions/délais du client. L’historique personnel reste disponible.
+
+Les deux joueurs doivent utiliser **1.0.1 ou plus récent** (protocole 2). Les messages de 1.0.0 sont rejetés, car cette version pouvait partager des dégâts reçus sous forme de statistiques de duel. La mise à jour conserve les données locales déjà enregistrées.
 
 Les échanges contiennent les GUID des personnages, un identifiant temporaire de requête, les compteurs et les points de talents avec l’identifiant de leur arbre. Les données reçues ne constituent pas un classement certifié et ne modifient jamais ton historique local.
 
@@ -37,7 +39,7 @@ Le panneau ajuste sa hauteur aux textes longs. Les traductions sont complètes d
 
 ## Diagnostic
 
-Taper **`/whodueling diagnostic`** pour afficher la version du client, la langue, les API disponibles, les IDs et noms des compteurs candidats, les compteurs personnels et les statistiques d’échange. Cette commande ne demande aucune information à d’autres joueurs.
+Taper **`/whodueling diagnostic`** pour afficher la version du client, la langue, les API disponibles, les IDs et noms des compteurs de duel reconnus, les compteurs personnels et les statistiques d’échange. « Yes » confirme uniquement la présence des fonctions, pas la réussite d’une inspection ni l’accès aux données de l’adversaire. Cette commande ne demande aucune information à d’autres joueurs ; les échanges peuvent donc rester à zéro avant une demande de duel.
 
 En cas d’erreur, conserver son texte complet, le résultat du diagnostic et les étapes de reproduction. BugGrabber/BugSack peuvent aider à recueillir les erreurs.
 

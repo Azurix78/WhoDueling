@@ -89,10 +89,17 @@ function Data.SharedTalents(treeID, points)
     return result
 end
 
--- Known historical IDs are candidates only. Require membership in this
--- client's statistics catalogue before any GetStatistic/GetComparisonStatistic.
+-- IDs differ between clients. Discover by exact localized statistic names,
+-- never by assuming an ID from another edition has the same meaning.
+local function statisticName(name)
+    if not Logic.Public(name) or type(name) ~= "string" then return nil end
+    return name:match("^%s*(.-)%s*$"):lower()
+end
+
 function Data.DiscoverCounters()
     Data.counters, Data.counterNames = {}, {}
+    local candidates, ambiguous = {}, {}
+    local expected = { wins = statisticName(addon.L.statWins), losses = statisticName(addon.L.statLosses) }
     local categories = Data.Call(GetStatisticsCategoryList)
     if type(categories) ~= "table" then return end
     for _, category in pairs(categories) do
@@ -101,16 +108,22 @@ function Data.DiscoverCounters()
             if Logic.Count(count) and count <= 1000 then
                 for index = 1, count do
                     local _, skip, id = Data.Call(GetStatistic, category, index)
-                    if not skip and (id == 527 or id == 528) then
+                    if not skip and type(id) == "number" and Logic.Count(id) and id > 0 then
                         local _, name = Data.Call(GetAchievementInfo, id)
-                        if type(name) == "string" and name ~= "" then
-                            local key = id == 527 and "wins" or "losses"
-                            Data.counters[key], Data.counterNames[key] = id, name
+                        local normalized = statisticName(name)
+                        for key, wanted in pairs(expected) do
+                            if normalized and normalized == wanted then
+                                if candidates[key] and candidates[key].id ~= id then ambiguous[key] = true end
+                                candidates[key] = { id = id, name = name }
+                            end
                         end
                     end
                 end
             end
         end
+    end
+    for key, candidate in pairs(candidates) do
+        if not ambiguous[key] then Data.counters[key], Data.counterNames[key] = candidate.id, candidate.name end
     end
 end
 

@@ -12,7 +12,7 @@
 ## Notes-zhCN: 选中决斗挑战者，查看天赋并记录决斗结果。
 ## Notes-zhTW: 選取決鬥挑戰者，查看天賦並記錄決鬥結果。
 ## Author: Syntaxucre
-## Version: 1.0.0
+## Version: 1.0.1
 ## SavedVariables: WhoDuelingDB
 
 Localization.lua

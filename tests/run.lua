@@ -44,7 +44,10 @@ end
 
 local function environment(locale, database)
     COMBAT = false
-    local env = { time = 100, sent = {}, inspections = {}, comparisons = {}, units = {}, calls = {}, chats = {}, hooks = {} }
+    local env = { time = 100, sent = {}, inspections = {}, comparisons = {}, units = {}, calls = {}, chats = {}, hooks = {},
+        entries = { { id = 527, name = "Largest hit received", quantity = "12345" },
+            { id = 528, name = "Total damage received", quantity = "67890" },
+            { id = 9001, key = "wins" }, { id = 9002, key = "losses" } } }
     local me, other = "Player-1-000001", "Player-1-000002"
     env.me, env.other = me, other
     env.units.player = { name = "Moi", guid = me }
@@ -54,7 +57,7 @@ local function environment(locale, database)
     GetServerTime = function() return 1800000000 end
     GetNormalizedRealmName = function() return "Realm" end
     GetRealmName = GetNormalizedRealmName
-    GetBuildInfo = function() return "1.60.1", "70009", "date", 16001 end
+    GetBuildInfo = function() return "1.60.1", "70338", "date", 16001 end
     UnitFullName = function(unit) local u = env.units[unit]; if u then return u.name, "Realm" end end
     UnitName = UnitFullName
     UnitGUID = function(unit) return env.units[unit] and env.units[unit].guid end
@@ -70,15 +73,25 @@ local function environment(locale, database)
             if unit.guid == guid then return "Mage", "MAGE", "Human", "Human", 2, unit.name, "Realm" end
         end
     end
-    GetStatisticsCategoryList = function() return env.noCounters and {} or { 1 } end
-    GetCategoryNumAchievements = function(_) return 2 end
+    GetStatisticsCategoryList = function() return env.noCounters and {} or env.categories or { 1 } end
+    GetCategoryNumAchievements = function(_) return #env.entries end
     GetStatistic = function(id, index)
-        if index then return "0", false, index == 1 and 527 or 528 end
+        if index then local row = env.entries[index]; return row.quantity or "0", row.skip or false, row.id end
         env.calls[#env.calls + 1] = id
-        return env.native and (id == 527 and env.native.wins or env.native.losses)
+        for _, row in ipairs(env.entries) do
+            if row.id == id then return row.key and env.native and env.native[row.key] or row.quantity end
+        end
     end
-    GetComparisonStatistic = function(id) return env.compared and (id == 527 and env.compared.wins or env.compared.losses) end
-    GetAchievementInfo = function(id) return id, id == 527 and "Duels gagnés" or "Duels perdus" end
+    GetComparisonStatistic = function(id)
+        for _, row in ipairs(env.entries) do
+            if row.id == id then return row.key and env.compared and env.compared[row.key] or row.quantity end
+        end
+    end
+    GetAchievementInfo = function(id)
+        for _, row in ipairs(env.entries) do
+            if row.id == id then return id, row.name or env.addon.L[row.key == "wins" and "statWins" or "statLosses"] end
+        end
+    end
     C_NamePlate = { GetNamePlates = function() return env.plates or {} end }
     Constants = { TraitConsts = { INSPECT_TRAIT_CONFIG_ID = -1 } }
     C_Traits = {
@@ -261,6 +274,49 @@ test("native stats require catalogued counters and missing values are not zero",
     assert(text:find("— duels", 1, true)); assert(text:find("0 victoires", 1, true))
 end)
 
+test("the reported Forever damage counters cannot become duel statistics", function()
+    local e = environment("enUS")
+    GetAchievementInfo = function(id)
+        return id, id == 527 and "Largest hit received" or "Total damage received"
+    end
+    e.native = { wins = "12345", losses = "67890" }
+    e.addon.Data.DiscoverCounters()
+    eq(e.addon.Data.counters.wins, nil)
+    eq(e.addon.Data.counters.losses, nil)
+    eq(e.addon.Data.Statistics(false), nil)
+    local stats, source = e.addon.Data.SelfProfile()
+    eq(source, "L"); eq(stats.wins, 0); eq(stats.losses, 0)
+end)
+
+test("duel counters are discovered by meaning, independently of their IDs", function()
+    for _, locale in ipairs({ "enUS", "frFR", "deDE", "esES", "esMX", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW" }) do
+        local e = environment(locale)
+        e.entries[3].id, e.entries[4].id = 7771, 7772
+        e.native = { wins = "12", losses = "8" }
+        e.addon.Data.DiscoverCounters()
+        eq(e.addon.Data.counters.wins, 7771); eq(e.addon.Data.counters.losses, 7772)
+        eq(e.addon.Data.counterNames.wins, e.addon.L.statWins)
+        eq(e.addon.Data.Statistics(false).wins, 12)
+        for _, id in ipairs(e.calls) do assert(id ~= 527 and id ~= 528) end
+    end
+end)
+
+test("unknown and ambiguous statistic names fail closed", function()
+    local e = environment("enUS")
+    e.entries[3].name = "Duels won yesterday"
+    e.entries[4].name = "Something else"
+    e.addon.Data.DiscoverCounters()
+    eq(e.addon.Data.counters.wins, nil); eq(e.addon.Data.counters.losses, nil)
+    e.entries[3].name, e.entries[4].name = nil, nil
+    e.entries[#e.entries + 1] = { id = 9003, key = "wins" }
+    e.addon.Data.DiscoverCounters()
+    eq(e.addon.Data.counters.wins, nil); eq(e.addon.Data.counters.losses, 9002)
+    e.entries[#e.entries] = nil
+    e.categories = { 1, 2 }
+    e.addon.Data.DiscoverCounters()
+    eq(e.addon.Data.counters.wins, 9001); eq(e.addon.Data.counters.losses, 9002)
+end)
+
 test("combat does not mutate protected attributes and clears stale targets on exit", function()
     local e = environment(); e.event("DUEL_REQUESTED", "Rival"); e.advance(0.25)
     COMBAT = true; e.event("PLAYER_REGEN_DISABLED"); e.popup:Hide()
@@ -304,7 +360,7 @@ test("API wrapper preserves nil holes and rejects secret return values", functio
 end)
 
 local function response(e, source, wins, losses)
-    return table.concat({ "1", "R", e.addon.request.token, e.other, e.me, source,
+    return table.concat({ e.addon.Logic.PROTOCOL, "R", e.addon.request.token, e.other, e.me, source,
         wins or "-", losses or "-", "42", "0", "21", "30" }, "|")
 end
 
@@ -323,7 +379,7 @@ end)
 test("malformed, spoofed, stale, unsolicited and broadcast replies are rejected", function()
     local e = environment(); e.event("DUEL_REQUESTED", "Rival")
     local good = response(e, "G", "50", "20")
-    for _, message in ipairs({ "evil", good .. "|extra", good:gsub("|50|", "|-1|"), good:gsub("|21|", "|999999|"), good:gsub("|42|", "|-|"), good:gsub("1|R|", "2|R|", 1) }) do
+    for _, message in ipairs({ "evil", good .. "|extra", good:gsub("|50|", "|-1|"), good:gsub("|21|", "|999999|"), good:gsub("|42|", "|-|"), good:gsub("2|R|", "3|R|", 1) }) do
         e.event("CHAT_MSG_ADDON", "WHODUELING", message, "WHISPER", "Rival-Realm")
     end
     e.event("CHAT_MSG_ADDON", "WHODUELING", good, "CHANNEL", "Rival-Realm")
@@ -331,6 +387,16 @@ test("malformed, spoofed, stale, unsolicited and broadcast replies are rejected"
     eq(e.addon.request.sharedStats, nil)
     e.advance(10); e.event("CHAT_MSG_ADDON", "WHODUELING", good, "WHISPER", "Rival-Realm")
     eq(e.addon.request.sharedStats, nil); assert(e.addon.metrics.rejected >= 9)
+end)
+
+test("old profiles that could mislabel damage are rejected", function()
+    local e = environment(); e.event("DUEL_REQUESTED", "Rival")
+    local old = response(e, "G", "12345", "67890"):gsub("^2|", "1|")
+    e.event("CHAT_MSG_ADDON", "WHODUELING", old, "WHISPER", "Rival-Realm")
+    eq(e.addon.request.sharedStats, nil); eq(e.addon.metrics.rejected, 1)
+    local current = response(e, "L", "6", "4")
+    e.event("CHAT_MSG_ADDON", "WHODUELING", current, "WHISPER", "Rival-Realm")
+    eq(e.addon.request.sharedStats.wins, 6)
 end)
 
 test("peer queries and retries are rate limited", function()
@@ -342,7 +408,7 @@ end)
 
 test("outgoing challenger answers only a verified nearby current opponent", function()
     local e = environment(); StartDuel("target", false)
-    local query = table.concat({ "1", "Q", "100-1", e.other, e.me }, "|")
+    local query = table.concat({ e.addon.Logic.PROTOCOL, "Q", "100-1", e.other, e.me }, "|")
     e.event("CHAT_MSG_ADDON", "WHODUELING", query, "WHISPER", "Rival-Realm")
     eq(#e.sent, 1)
     local f = e.addon.Logic.Decode(e.sent[1].message)
@@ -412,6 +478,8 @@ test("localized panel accommodates long strings and diagnostic stays local", fun
         assert(e.addon.UI.panel.height > height)
         local sent = #e.sent
         e.addon.Diagnostic(); eq(#e.sent, sent); assert(#e.chats > 10)
+        eq(e.chats[#e.chats], "|cff80c0ffWhoDueling|r · " .. e.addon.L.sharing)
+        assert(e.chats[1]:find("1.0.1", 1, true))
     end
 end)
 

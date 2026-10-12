@@ -1,4 +1,4 @@
-# WhoDueling 1.0.0
+# WhoDueling 1.0.1
 
 Addon multilingue pour **WoW Forever 1.60.1 / interface 16001**, par Syntaxucre.
 
@@ -22,7 +22,9 @@ Le script vérifie les sources et les empreintes des fichiers copiés. Il ne dé
 
 **Première installation : redémarrer WoW**, puis activer WhoDueling. Pour une mise à jour sans nouveau fichier Lua, `/reload` suffit ; sinon redémarrer.
 
-Pour une installation manuelle, extraire `dist/WhoDueling-1.0.0.zip` dans AddOns. Le TOC doit être à `AddOns/WhoDueling/WhoDueling.toc`.
+Pour une installation manuelle, extraire `dist/WhoDueling-1.0.1.zip` dans AddOns. Le TOC doit être à `AddOns/WhoDueling/WhoDueling.toc`.
+
+La version 1.0.1 corrige la détection des statistiques : les IDs 527 et 528 observés sur Forever désignent des dégâts reçus. Les compteurs de duel sont désormais recherchés par leur nom localisé dans le catalogue du client. Les deux adversaires doivent utiliser au moins 1.0.1 pour partager des données ; l’historique local est conservé.
 
 ## Informations et limites
 

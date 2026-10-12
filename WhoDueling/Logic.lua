@@ -1,6 +1,9 @@
 local _, addon = ...
 local Logic = {}
 addon.Logic = Logic
+-- Version 1 peers could mislabel damage statistics as duels. Reject their
+-- profiles; both players must update before using shared game statistics.
+Logic.PROTOCOL = "2"
 
 -- Secret values must never be compared, formatted or persisted by this addon.
 function Logic.Public(value)
@@ -153,14 +156,14 @@ function Logic.Opponent(char, name, guid)
     return record
 end
 
--- Protocol 1: Q|token|requesterGUID|recipientGUID
+-- Protocol 2: Q|token|requesterGUID|recipientGUID
 -- R|token|senderGUID|recipientGUID|G/L/N|wins/-|losses/-|treeID/-|p1/-|p2/-|p3/-
 -- No translated strings or executable content travel over the wire.
 function Logic.Decode(message)
     if not Logic.Public(message) or type(message) ~= "string" or #message > 240 then return nil end
     local fields = {}
     for field in (message .. "|"):gmatch("(.-)|") do fields[#fields + 1] = field end
-    if fields[1] ~= "1" or (fields[2] ~= "Q" and fields[2] ~= "R") then return nil end
+    if fields[1] ~= Logic.PROTOCOL or (fields[2] ~= "Q" and fields[2] ~= "R") then return nil end
     if not fields[3] or not fields[3]:match("^%d+%-%d+$") or #fields[3] > 40 then return nil end
     for i = 4, 5 do
         if not fields[i] or #fields[i] > 80 or not fields[i]:match("^Player%-%x+%-%x+$") then return nil end

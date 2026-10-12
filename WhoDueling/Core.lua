@@ -1,6 +1,7 @@
 local addonName, addon = ...
 local Logic, Data, UI, L = addon.Logic, addon.Data, addon.UI, addon.L
 local PREFIX = "WHODUELING"
+addon.version = "1.0.1"
 local frame = CreateFrame("Frame")
 addon.frame = frame
 addon.metrics = { sent = 0, received = 0, rejected = 0 }
@@ -79,7 +80,7 @@ local function queryPeer(request)
     if not request.guid or request.closed or now() >= request.deadline then return end
     if request.attempts >= 2 or (request.sentAt and now() - request.sentAt < 5) or request.peerReplied then return end
     request.attempts, request.sentAt = request.attempts + 1, now()
-    if send(table.concat({ "1", "Q", request.token, addon.guid, request.guid }, "|"), request.name) then
+    if send(table.concat({ Logic.PROTOCOL, "Q", request.token, addon.guid, request.guid }, "|"), request.name) then
         addon.metrics.sent = addon.metrics.sent + 1
     end
 end
@@ -178,7 +179,7 @@ function addon.Message(prefix, message, channel, sender)
         replyTimes[name] = now()
         local stats, source, talents = Data.SelfProfile()
         local function value(v) return v ~= nil and tostring(v) or "-" end
-        local reply = { "1", "R", fields[3], addon.guid, fields[4], source,
+        local reply = { Logic.PROTOCOL, "R", fields[3], addon.guid, fields[4], source,
             value(stats.wins), value(stats.losses), value(talents and talents.treeID) }
         for i = 1, 3 do reply[#reply + 1] = value(talents and talents.points[i]) end
         send(table.concat(reply, "|"), name)
@@ -262,7 +263,7 @@ function addon.Diagnostic()
     if not addon.request then Data.DiscoverCounters() end
     local yes = function(value) return value and L.yes or L.no end
     local version, build, _, interface = Data.Call(GetBuildInfo)
-    printLine("diagnostic", "1.0.0")
+    printLine("diagnostic", addon.version)
     printLine("build", tostring(version) .. " / " .. tostring(build) .. " / " .. tostring(interface))
     printLine("locale", GetLocale())
     printLine("identity", addon.playerName .. " / " .. addon.guid)
@@ -274,7 +275,7 @@ function addon.Diagnostic()
     printLine("since", UI.StatsText(addon.character))
     printLine("messaging", yes(addon.messaging))
     for _, key in ipairs({ "sent", "received", "rejected" }) do printLine(key, addon.metrics[key]) end
-    printLine("sharing", L.sharing)
+    if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("|cff80c0ffWhoDueling|r · " .. L.sharing) end
 end
 
 local function onStartDuel(unit, hardcore)
