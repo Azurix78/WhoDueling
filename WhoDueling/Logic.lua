@@ -30,18 +30,32 @@ function Logic.Count(value)
     return value
 end
 
-function Logic.Name(name, realm)
-    if not Logic.Public(name) or not Logic.Public(realm) or type(name) ~= "string" then return nil end
+function Logic.Name(name, surname)
+    if not Logic.Public(name) or not Logic.Public(surname) or type(name) ~= "string" then return nil end
     name = name:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
-    name = name:gsub("|H[^|]+|h([^|]+)|h", "%1"):gsub("^%[", ""):gsub("%]$", "")
+    -- Player links may display only the first name. Use the full identity
+    -- stored in the link, where the surname separator is a hyphen.
+    name = name:gsub("|Hplayer:([^:|]+)[^|]*|h[^|]*|h", "%1"):gsub("^%[", ""):gsub("%]$", "")
     name = name:gsub("|%d[%d%-]*%((.-)%)", "%1")
     -- WoW's grammar annotation follows a name on some RU/KR messages.
     name = name:gsub("|[1234567890]+", "")
-    if name == "" or #name > 160 or name:find("[%s|%c/;]") then return nil end
-    if not name:find("-", 1, true) and realm and realm ~= "" then
-        name = name .. "-" .. realm:gsub("%s", "")
+    local constants = Constants and Constants.CharacterNameSeparatorConsts
+    local separator = constants and constants.CHARACTERNAME_SURNAME_SEPARATOR or " "
+    if type(separator) ~= "string" or #separator ~= 1 then return nil end
+    local first, last = name:match("^([^%s%-]+)[ %-]([^%s%-]+)$")
+    if not first then first = name end
+    if surname ~= nil and surname ~= "" then
+        if type(surname) ~= "string" or last and last ~= surname then return nil end
+        last = surname
     end
-    return name
+    -- Forever has no realms: the two required parts are first name/surname.
+    -- Never guess a surname or target a potentially ambiguous first name.
+    local function valid(part)
+        return type(part) == "string" and part ~= "" and #part <= 80 and
+            not part:find("[%s|%c/;%-\\%[%]\"]")
+    end
+    if not valid(first) or not valid(last) then return nil end
+    return first .. separator .. last
 end
 
 function Logic.SameName(a, b)
@@ -100,7 +114,7 @@ function Logic.ResultPatterns(knockout, retreat)
     return result
 end
 
-function Logic.ParseResult(message, patterns, realm)
+function Logic.ParseResult(message, patterns)
     if not Logic.Public(message) or type(message) ~= "string" then return nil end
     message = message:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
         :gsub("|H[^|]+|h([^|]+)|h", "%1"):gsub("|%d[%d%-]*%((.-)%)", "%1")
@@ -109,7 +123,7 @@ function Logic.ParseResult(message, patterns, realm)
         local captures = { variant:match(item.pattern) }
         if #captures == 2 then
             local names = {}
-            for i, slot in ipairs(item.slots) do names[slot] = Logic.Name(captures[i], realm) end
+            for i, slot in ipairs(item.slots) do names[slot] = Logic.Name(captures[i]) end
             if names[1] and names[2] and names[1] ~= names[2] then
                 if item.retreat then return names[2], names[1] end
                 return names[1], names[2]

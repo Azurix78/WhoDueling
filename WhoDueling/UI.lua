@@ -60,15 +60,11 @@ end
 function UI.SetTarget(name)
     if InCombatLockdown() then return end
     local unit = name and addon.Data.FindUnit(name, addon.request and addon.request.guid)
-    local macroName = name
-    if name and name:sub(-#addon.realm - 1) == "-" .. addon.realm then
-        macroName = name:sub(1, #name - #addon.realm - 1)
-    end
     -- Revalidate a unit token immediately before clicking; mouseover and
     -- nameplate tokens can be reused for a different player between frames.
     -- Prefer the native secure target action over executing macro text.
     local mode = unit and "target" or name and "macro" or nil
-    local macro = name and not unit and ("/targetexact " .. macroName) or nil
+    local macro = name and not unit and ("/targetexact " .. name) or nil
     if UI.targetName == name and UI.targetUnit == unit and UI.targetMode == mode and UI.targetMacro == macro then return end
     UI.targetName, UI.targetUnit, UI.targetMode, UI.targetMacro = name, unit, mode, macro
     UI.button:SetAttribute("type", mode)

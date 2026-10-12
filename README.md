@@ -1,4 +1,4 @@
-# WhoDueling 1.0.2
+# WhoDueling 1.0.3
 
 Addon multilingue pour **WoW Forever 1.60.1 / interface 16001**, par Syntaxucre.
 
@@ -22,15 +22,17 @@ Le script vérifie les sources et les empreintes des fichiers copiés. Il ne dé
 
 **Première installation : redémarrer WoW**, puis activer WhoDueling. Pour une mise à jour sans nouveau fichier Lua, `/reload` suffit ; sinon redémarrer.
 
-Pour une installation manuelle, extraire `dist/WhoDueling-1.0.2.zip` dans AddOns. Le TOC doit être à `AddOns/WhoDueling/WhoDueling.toc`. L’archive se construit avec `Build-Release.ps1` si elle n’est pas présente après un téléchargement du dépôt.
+Pour une installation manuelle, extraire `dist/WhoDueling-1.0.3.zip` dans AddOns. Le TOC doit être à `AddOns/WhoDueling/WhoDueling.toc`. L’archive se construit avec `Build-Release.ps1` si elle n’est pas présente après un téléchargement du dépôt.
 
-La version 1.0.2 retire les statistiques du panneau et les requêtes de comparaison des hauts faits qui pouvaient déclencher l’erreur Blizzard `GetCategoryNumAchievements` (`id="summary"`). Le ciblage utilise une unité vérifiée lorsqu’elle est accessible et l’inspection dispose d’un repli pour retrouver l’arbre de talents. Le diagnostic indique les ciblages confirmés et les réponses d’inspection. Les données sauvegardées sont conservées.
+La version 1.0.3 corrige le format des noms sur Forever : les deux chaînes représentent le **prénom et le nom de famille**, sans royaume. Le bouton conserve les deux parties et utilise par exemple `/targetexact Bia Fine`. Les formats `Bia-Fine` des liens et `Bia Fine` du client sont normalisés pour le ciblage, l’inspection et les échanges privés. Un prénom seul ne suffit pas pour sélectionner un joueur.
+
+La requête de comparaison des hauts faits, retirée en 1.0.2 pour éviter l’erreur Blizzard `GetCategoryNumAchievements` (`id="summary"`), reste désactivée. Le diagnostic indique les ciblages confirmés et les réponses d’inspection. Les données sauvegardées sont conservées.
 
 ## Informations et limites
 
 Voir le [guide complet](WhoDueling/README.md) pour les langues, le diagnostic, l’inspection, le partage et les vérifications en jeu.
 
-L’inspection directe ne nécessite aucun addon chez l’adversaire. Si celui-ci possède WhoDueling 1.0.1 ou plus récent, un échange privé peut compléter les talents manquants. La disponibilité des talents, le rendu et les actions sécurisées doivent encore être confirmés dans le client ; les tests simulés ne remplacent pas cette étape.
+L’inspection directe ne nécessite aucun addon chez l’adversaire. Pour compléter les talents par échange privé, mettre les deux addons à jour vers 1.0.3 ou plus récent. La disponibilité des talents, le rendu et les actions sécurisées doivent encore être confirmés dans le client ; les tests simulés ne remplacent pas cette étape.
 
 ## Développement
 
@@ -43,4 +45,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Build-Release.ps1
 
 Les tests Lua utilisent Fengari et vérifient aussi la syntaxe Lua 5.1. Le test PowerShell utilise uniquement des dossiers temporaires du projet. L’archive contient uniquement `WhoDueling/` ; les scripts d’installation restent dans le projet.
 
-Références techniques : [événements de duel Forever](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/DuelInfoDocumentation.lua), [arbres de talents Forever](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_PlayerSpells/Camelot/ClassTalents/Blizzard_ClassTalentsFrame.lua), [statistiques natives](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_Statistics/Camelot/StatisticsFrame.lua), [boutons sécurisés](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua).
+Références techniques : [prénoms et noms de famille Forever](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_FrameXMLUtil/Camelot/NameUtil.lua), [événements de duel Forever](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/DuelInfoDocumentation.lua), [arbres de talents Forever](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_PlayerSpells/Camelot/ClassTalents/Blizzard_ClassTalentsFrame.lua), [boutons sécurisés](https://github.com/Gethe/wow-ui-source/blob/forever/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua).

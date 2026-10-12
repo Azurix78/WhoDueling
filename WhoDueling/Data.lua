@@ -12,13 +12,12 @@ function Data.Call(fn, ...)
     return unpack(values, 2, values.n)
 end
 
-function Data.FullName(name, realm)
-    if not realm or realm == "" then realm = addon.realm end
-    return Logic.Name(name, realm)
+function Data.FullName(name, surname)
+    return Logic.Name(name, surname)
 end
 
 function Data.UnitName(unit)
-    return Data.FullName(Data.Call(UnitFullName or UnitName, unit))
+    return Data.FullName(Data.Call(UnitNameUnmodified or UnitName or UnitFullName, unit))
 end
 
 function Data.FindUnit(name, guid)

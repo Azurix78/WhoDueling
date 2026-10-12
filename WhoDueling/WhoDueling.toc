@@ -12,7 +12,7 @@
 ## Notes-zhCN: 选中向你发起决斗的玩家并查看其天赋。
 ## Notes-zhTW: 選取向你發起決鬥的玩家並查看其天賦。
 ## Author: Syntaxucre
-## Version: 1.0.2
+## Version: 1.0.3
 ## SavedVariables: WhoDuelingDB
 
 Localization.lua

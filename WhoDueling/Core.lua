@@ -1,7 +1,7 @@
 local addonName, addon = ...
 local Logic, Data, UI, L = addon.Logic, addon.Data, addon.UI, addon.L
 local PREFIX = "WHODUELING"
-addon.version = "1.0.2"
+addon.version = "1.0.3"
 local frame = CreateFrame("Frame")
 addon.frame = frame
 addon.metrics = { sent = 0, received = 0, rejected = 0, targetClicks = 0, targetHits = 0, inspectRequests = 0, inspectReplies = 0 }
@@ -20,9 +20,6 @@ local function initialize()
     if addon.character then return true end
     local guid = publicGUID(Data.Call(UnitGUID, "player"))
     if not guid then return false end
-    addon.realm = Data.Call(GetNormalizedRealmName) or Data.Call(GetRealmName)
-    if type(addon.realm) ~= "string" then return false end
-    addon.realm = addon.realm:gsub("%s", "")
     addon.playerName = Data.UnitName("player")
     if not addon.playerName then return false end
     addon.guid = guid
@@ -62,8 +59,12 @@ local function guidForRequest(request)
     if not request.guid then
         local duelGUID = publicGUID(Data.Call(GetDuelerInfo))
         if duelGUID then
-            local _, _, _, _, _, name, realm = Data.Call(GetPlayerInfoByGUID, duelGUID)
-            if Logic.SameName(Data.FullName(name, realm), request.name) then request.guid = duelGUID end
+            local name, surname = Data.Call(UnitNameFromGUID, duelGUID)
+            if not name then
+                local _, _, _, _, _, firstName, lastName = Data.Call(GetPlayerInfoByGUID, duelGUID)
+                name, surname = firstName, lastName
+            end
+            if Logic.SameName(Data.FullName(name, surname), request.name) then request.guid = duelGUID end
         end
     end
     if request.guid then Logic.Opponent(addon.character, request.name, request.guid) end
@@ -109,10 +110,10 @@ local function tryData(request)
     end
 end
 
-function addon.Request(name)
+function addon.Request(name, surname)
     if not initialize() then return end
     addon.CloseRequest()
-    name = Logic.Name(name, addon.realm)
+    name = Data.FullName(name, surname)
     if not name or name == addon.playerName then return end
     serial = serial + 1
     local request = { name = name, token = math.floor(now() * 1000) .. "-" .. serial,
@@ -168,7 +169,7 @@ end
 function addon.Message(prefix, message, channel, sender)
     if not Logic.Public(prefix) or prefix ~= PREFIX or not initialize() then return end
     if not Logic.Public(channel) or channel ~= "WHISPER" then addon.metrics.rejected = addon.metrics.rejected + 1; return end
-    local fields, name = Logic.Decode(message), Logic.Name(sender, addon.realm)
+    local fields, name = Logic.Decode(message), Logic.Name(sender)
     if not fields or not name or fields[5] ~= addon.guid or fields[4] == addon.guid then
         addon.metrics.rejected = addon.metrics.rejected + 1; return
     end
@@ -204,7 +205,7 @@ end
 
 function addon.Result(message, lineID)
     if not initialize() then return end
-    local winner, loser = Logic.ParseResult(message, addon.patterns, addon.realm)
+    local winner, loser = Logic.ParseResult(message, addon.patterns)
     if not winner or (winner ~= addon.playerName and loser ~= addon.playerName) then return end
     local opponent = winner == addon.playerName and loser or winner
     if duelContext and duelContext.hardcore and duelContext.name == opponent and now() - duelContext.at < 600 then return end
@@ -282,7 +283,7 @@ end
 
 local function onStartDuel(unit, hardcore)
     if not initialize() then return end
-    local name = Data.UnitName(unit or "target") or Logic.Name(unit, addon.realm)
+    local name = Data.UnitName(unit or "target") or Logic.Name(unit)
     if name then duelContext = { name = name, guid = publicGUID(Data.Call(UnitGUID, unit or "target")), at = now(), hardcore = hardcore == true } end
 end
 
@@ -297,7 +298,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
     elseif event == "DUEL_TO_THE_DEATH_REQUESTED" then
         if initialize() then
             addon.CloseRequest()
-            duelContext = { name = Logic.Name((...), addon.realm), at = now(), hardcore = true }
+            duelContext = { name = Data.FullName(...), at = now(), hardcore = true }
         end
     elseif event == "DUEL_FINISHED" then addon.CloseRequest()
     elseif event == "INSPECT_READY" then addon.InspectReady(...)
